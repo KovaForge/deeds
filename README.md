@@ -52,10 +52,26 @@ good-deeds/
 - Azure Functions Core Tools v4
 - Postgres connection string (Neon free tier recommended)
 
+### Codespaces quick start
+
+1. Verify tooling: `dotnet --info` and `func --version` in the Codespaces terminal.
+2. From repo root run `./dev.sh` (or `./dev.ps1` in PowerShell) to start both the Functions host and Blazor dev server.
+3. Codespaces forwards the key ports automatically:
+	- API: 7071 (`http://localhost:7071/api/health`)
+	- Blazor dev server: 7032 (https) and 5269 (http)
+4. Stop both with `Ctrl+C` in the terminal.
+
 ### Configure Environment
 
 1. Copy `api/local.settings.json` and set the `DB` value under `Values` to your Postgres connection string.
 2. Ensure the database user has permission to create tables (schema is generated automatically).
+
+### Quick Start (watch both projects)
+
+- Bash: `./dev.sh`
+- PowerShell: `./dev.ps1`
+
+The scripts start the Functions host (`func start`) and the Blazor dev server (`dotnet watch run`) together. Stop with `Ctrl+C` in the foreground terminal.
 
 ### Start the Functions API
 
@@ -75,7 +91,7 @@ cd app
 dotnet watch run
 ```
 
-The dev server defaults to `https://localhost:7142`. The client expects the API at `http://localhost:7071/api/`; update `app/wwwroot/appsettings.json` if you change ports.
+The dev server defaults to `https://localhost:7032` (and `http://localhost:5269`). The client expects the API at `http://localhost:7071/api/`; update `app/wwwroot/appsettings.json` if you change ports. CORS is enabled in the Functions host for the local Blazor ports.
 
 ## First-Time Use
 

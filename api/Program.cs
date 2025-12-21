@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
 
@@ -15,8 +16,7 @@ var host = new HostBuilder()
         services.AddOptions<DbOptions>()
             .Configure<IConfiguration>((opts, cfg) =>
             {
-                opts.ConnectionString = cfg["DB"]
-                    ?? throw new InvalidOperationException("DB connection string missing (expecting 'DB' setting)");
+                opts.ConnectionString = cfg["DB"];
             });
 
         services.AddSingleton(sp =>
@@ -25,6 +25,15 @@ var host = new HostBuilder()
     .Build();
 
 var dbOptions = host.Services.GetRequiredService<DbOptions>();
-await Data.EnsureSchema(dbOptions.ConnectionString);
+if (string.IsNullOrWhiteSpace(dbOptions.ConnectionString))
+{
+    host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Startup")
+        .LogWarning("DB connection string not provided; database-dependent endpoints will fail until 'DB' is set.");
+}
+else
+{
+    await Data.EnsureSchema(dbOptions.ConnectionString);
+}
 
 host.Run();
