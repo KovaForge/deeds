@@ -13,14 +13,10 @@
         "http": {
             "cors": {
                 "allowedOrigins": [
-                    "http://localhost:5269",
-                    "https://localhost:7032",
-                    "http://127.0.0.1:5269",
-                    "https://127.0.0.1:7032"
+                    "*"
                 ],
                 "allowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                "allowedHeaders": ["*"],
-                "supportCredentials": true
+                "allowedHeaders": ["*"]
             }
         }
     }

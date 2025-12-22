@@ -1,0 +1,23 @@
+# AI agent guide for Good Deeds
+
+- Architecture: Blazor WASM client in [app](app/), Azure Functions (.NET isolated) API in [api](api/), Neon Postgres backing store. Functions and client are unauthenticated; parent scoping is enforced by headers/queries.
+- Startup and migrations: [api/Program.cs](api/Program.cs) binds the DB env var via DbOptions, normalizes `postgresql://` URLs with [api/ConnectionStringHelper.cs](api/ConnectionStringHelper.cs), and runs file-based migrations from [api/sql](api/sql) using [api/Migrations.cs](api/Migrations.cs). Add new .sql files there (ordered by filename) to evolve the schema.
+- Database access: [api/Data.cs](api/Data.cs) is the single Dapper helper; keep CRUD and query logic there. GUID primary keys are generated server-side. EnsureSchema exists but normal flow relies on migrations.
+- Schema basics: Tables live under parents, children, deed_types, deeds, redemptions; optional text fields are deeds.note and redemptions.description. Money uses numeric(12,2) derived from each child’s dollar_per_point.
+- Data invariants: Deed types and deeds require non-zero points; redemptions require points > 0. Dollar-per-point must be > 0 when creating/updating children.
+- Request scoping: [api/ParentGuard.cs](api/ParentGuard.cs) reads x-parent-id or ?parentId= and compares to payload/route values. Missing IDs return 400; mismatches return conflict/forbidden. Reuse this guard in new endpoints.
+- API patterns: Function classes are per domain (Parents, Children, DeedTypes, Deeds, Redemptions, Balances, Export). Validation failures return { "error": "message" } with appropriate status codes. Deletes are idempotent (404 if missing, 204 on success).
+- Routes in use: POST /parents, POST /children, POST /deed-types, POST /deeds, POST /redemptions, GET /balances/{childId}, GET /children/{childId}/export/csv. Child-scoped calls must include x-parent-id.
+- Balance rules: Data.GetBalance computes deeds minus redemptions; redemptions fail with 409 when balance is insufficient. Balances default to zero when a child exists but has no history.
+- Date/time: Events are stored as timestamptz; handlers use DateTimeOffset.UtcNow. Keep new timestamps in UTC.
+- CSV export: ExportChildHistoryCsv builds history from Data.GetChildHistory and formats via Data.ToCsv. Headers include Content-Disposition with child-specific filename.
+- Client API usage: [app/Services/ApiClient.cs](app/Services/ApiClient.cs) wraps all HTTP calls and always sends x-parent-id. Keep new endpoints consistent so consumers can pass the header and handle 404 as “missing/empty” lists.
+- Local state: [app/Services/UserSettingsService.cs](app/Services/UserSettingsService.cs) caches parent-id and optional ChatGPT key in localStorage; prefer using the cache before hitting the API.
+- ChatGPT integration: [app/Services/ChatGptService.cs](app/Services/ChatGptService.cs) calls OpenAI gpt-4o-mini with JSON mode, returning ChatGptSuggestion. Failures return null rather than throw; keep it optional.
+- UI flows: Quick start assumes parent creation, then child + deed type, then deeds/redemptions. Lists treat 404 as empty; preserve that behavior when changing APIs.
+- Error handling: Server responses are JSON except CSV export; prefer new { error = "..." } bodies with relevant status. Client raises InvalidOperationException when an error body exists but call failed.
+- Local dev workflow: Run both stacks with ./dev.sh (bash) or ./dev.ps1 (PowerShell). Scripts require Azure Functions Core Tools (func) and a DB connection string; they start func start for the API and dotnet watch run for the client. Ports: API 7071, Blazor 7032 (https)/5269 (http).
+- Single-stack dev: API only: cd api && func start. Client only: cd app && dotnet watch run and set the API base URL in [app/wwwroot/appsettings.Development.json](app/wwwroot/appsettings.Development.json).
+- Environment/config: Copy [api/local.settings.json](api/local.settings.json) and set Values:DB. Client API URLs live in [app/wwwroot/appsettings*.json](app/wwwroot/appsettings.json). CORS is enabled in the Functions host for local ports.
+- Adding endpoints: Define payload/DTO records in [api/Models.cs](api/Models.cs), validate inputs, enforce parent ownership via ParentGuard, call Data, and return typed DTOs. Use UTC timestamps when writing date fields.
+- Deployment: Azure Static Web Apps builds [app](app/) and [api](api/) together. Ensure migrations in [api/sql](api/sql) are committed before deploy; schema_migrations prevents reapplying. Store secrets (DB, OpenAI) in environment/Azure config, not the repo.
