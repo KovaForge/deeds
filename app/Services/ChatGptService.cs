@@ -63,7 +63,7 @@ public class ChatGptService
         return new ChatGptSuggestion(points.Value, reason);
     }
 
-    public async Task<ChatGptSuggestion?> SuggestPointsForConditionAsync(string apiKey, string condition, CancellationToken cancellationToken = default)
+    public async Task<ChatGptSuggestion?> SuggestPointsForConditionAsync(string apiKey, string deedTypeName, string condition, bool isPositive, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
         {
@@ -100,6 +100,8 @@ Respond with JSON containing:
 - points: integer (positive for good, negative for bad)
 - reason: string (brief explanation of your assessment)";
 
+        var userPrompt = $"Behavior category: {deedTypeName}\nNature: {(isPositive ? "positive" : "negative")}\nSpecific incident: {condition}\n\nSuggest appropriate screen time adjustment in minutes.";
+
         var requestBody = new
         {
             model = "gpt-4o-mini",
@@ -108,7 +110,7 @@ Respond with JSON containing:
             messages = new object[]
             {
                 new { role = "system", content = systemPrompt },
-                new { role = "user", content = $"Assess this behavior and suggest screen time minutes:\n\n{condition}" }
+                new { role = "user", content = userPrompt }
             }
         };
 
