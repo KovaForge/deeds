@@ -17,9 +17,21 @@ if (string.IsNullOrWhiteSpace(apiBase))
 		? "http://localhost:7071/api/"
 		: "/api/";
 }
-else if (!apiBase.EndsWith('/'))
+else
 {
-	apiBase += "/";
+	// If we shipped a dev config (localhost) but the app is running on a non-localhost host,
+	// switch to the same-origin Functions route so production still works.
+	var isLocalApi = apiBase.Contains("localhost", StringComparison.OrdinalIgnoreCase);
+	var isLocalHost = builder.HostEnvironment.BaseAddress.Contains("localhost", StringComparison.OrdinalIgnoreCase);
+	if (isLocalApi && !isLocalHost)
+	{
+		apiBase = "/api/";
+	}
+
+	if (!apiBase.EndsWith('/'))
+	{
+		apiBase += "/";
+	}
 }
 
 builder.Services.AddScoped<ApiClient>(_ => new ApiClient(new HttpClient
