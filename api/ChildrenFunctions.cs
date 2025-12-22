@@ -89,10 +89,17 @@ public class ChildrenFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        var children = await Data.GetChildrenForParent(_cs, parentId);
-        var res = req.CreateResponse(HttpStatusCode.OK);
-        await res.WriteAsJsonAsync(children);
-        return res;
+        try
+        {
+            var children = await Data.GetChildrenForParent(_cs, parentId);
+            var res = req.CreateResponse(HttpStatusCode.OK);
+            await res.WriteAsJsonAsync(children);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to list children: {ex.Message}");
+        }
     }
 
     [Function("UpdateChild")]

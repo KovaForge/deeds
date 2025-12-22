@@ -81,7 +81,9 @@ class GoodDeedsApiClient:
             return None
         
         data = response.json()
-        print(f"✓ Child created with ID: {data['id']}")
+        # API returns PascalCase keys
+        child_id = data.get('Id') or data.get('id')
+        print(f"✓ Child created with ID: {child_id}")
         return data
     
     def list_children(self, parent_id: str):
