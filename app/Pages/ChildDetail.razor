@@ -177,7 +177,7 @@ else
             _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
             _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
             _deedTypes.Clear();
-            _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(_child.ParentId));
+            _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
 
             if (_deedTypes.Count > 0 && _form.DeedTypeId == Guid.Empty)
             {
