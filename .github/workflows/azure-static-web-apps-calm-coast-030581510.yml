@@ -30,8 +30,8 @@ jobs:
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "app" # App source code path
           api_location: "api" # Api source code path - optional
-          app_build_command: "dotnet publish -c Release -o build" # Publish Blazor WASM assets into ./build
-          output_location: "build/wwwroot" # Published Blazor output folder
+          app_build_command: "dotnet publish -c Release" # Publish Blazor WASM using default publish output
+          output_location: "bin/Release/net8.0/publish/wwwroot" # Default publish output folder
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
