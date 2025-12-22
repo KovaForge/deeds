@@ -12,4 +12,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.18" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Exclude Development appsettings from Release builds -->
+    <Content Remove="wwwroot\appsettings.Development.json" Condition="'$(Configuration)' == 'Release'" />
+  </ItemGroup>
+
 </Project>

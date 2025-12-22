@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "App",
   "resources": {
-    "hash": "sha256-5m2kxsSUugR5BIIGFAEvVlps8PxtIqYdQtczymLOOWk=",
+    "hash": "sha256-L8goxAApu55fDXf/yUToxpt2A3W9kM+9Ii9TbJN1IYA=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-vtotCeXt2UD6oc459laJT32vBgigZ+eLoUmdeFkvYDk="
     },
@@ -18,7 +18,7 @@
     },
     "coreAssembly": {},
     "assembly": {
-      "Microsoft.AspNetCore.Components.wasm": "sha256-yibPHN4uPcAWTBO8j7+++UCMA2y68Tq93v/xJvppdQc=",
+      "Microsoft.AspNetCore.Components.wasm": "sha256-k3m+sQ1M4iK7SfBQ656eiIP5/+ShM9isqOwIWiLzxgo=",
       "Microsoft.AspNetCore.Components.Forms.wasm": "sha256-mDPzvsfK/Eo+s1DAXD6UyYk75JXD0jFjByaAp7sUJJ8=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-keqEv/vxbXNt0RZt5vB8SJWckkqou8tzzQS0bYLCyWw=",
       "Microsoft.AspNetCore.Components.WebAssembly.wasm": "sha256-1Zi/baUtYUP6nn0Wl7FkYxFYjHo0R7CExZp3yMjIywg=",
@@ -53,13 +53,13 @@
       "System.Private.Uri.wasm": "sha256-y7UY2B9Oq4iGS97Do/vr9u/52avgx4NMUX/Ytrra4lg=",
       "System.Runtime.InteropServices.JavaScript.wasm": "sha256-obpfktlMMZRd/6+94Eqsz43u4IBXSwphEA0oRmrGRrE=",
       "System.Runtime.Serialization.Primitives.wasm": "sha256-YmgtgWlfbvj5RTsFfz7u825pTP9VVPvjdhDLA6QhLTE=",
-      "System.Runtime.wasm": "sha256-sS6HnYlscUtdek791J0fs/697uFNpgUUROsGmN65Z/s=",
+      "System.Runtime.wasm": "sha256-0++X5vNbbWonoSepfLyErTpvVc8Xo82syNZxUtb9qHg=",
       "System.Text.Encodings.Web.wasm": "sha256-W1+3Cs/g9HhgLy8QR8yJAQbxhEi61ZFQGNgOUretBKQ=",
       "System.Text.Json.wasm": "sha256-lnxAsMuiC8CMrKtpyIrLKF8lq7WgboNNBvfG8P1OjXE=",
       "System.Text.RegularExpressions.wasm": "sha256-Ukj7tVGZb/g+WTwwSJGqzhOVN+1qqhZR6Xaak9GMX5U=",
       "System.wasm": "sha256-I4hhyMuUoHdrzDopL9tlnkL/Skg+0OO+gmkOXNT3dcg=",
       "System.Private.CoreLib.wasm": "sha256-DxQo5d9O4D2cSpyqtl5HdfVLIhM84+v2jVPjAoNWj3s=",
-      "App.wasm": "sha256-wyKtsedVZ587Xj+ICrj9LfqZoGeY6yN/Nz55aGIk/DE="
+      "App.wasm": "sha256-4grLo9iIPPLxbSTItOAmBKL5ZWT+BEjGk7ovE0TAyxY="
     }
   },
   "cacheBootResources": true,
