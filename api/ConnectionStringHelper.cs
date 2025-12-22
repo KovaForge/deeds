@@ -39,9 +39,13 @@ public static class ConnectionStringHelper
         }
 
         var query = QueryHelpers.ParseQuery(uri.Query);
+        var unsupported = new[] { "channel_binding" };
         foreach (var kvp in query)
         {
-            builder[kvp.Key] = kvp.Value.LastOrDefault();
+            if (!unsupported.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                builder[kvp.Key] = kvp.Value.LastOrDefault();
+            }
         }
 
         return builder.ToString();
