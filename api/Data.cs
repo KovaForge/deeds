@@ -317,17 +317,17 @@ order by created_at desc;";
     const string sql = @"
 select
   c.id as ""ChildId"",
-  coalesce(d.points, 0) - coalesce(r.points, 0) as ""Points"",
+  (coalesce(d.points, 0) - coalesce(r.points, 0))::integer as ""Points"",
   (coalesce(d.points, 0) - coalesce(r.points, 0)) * c.dollar_per_point as ""Dollars""
 from children c
 left join (
-  select child_id, sum(points) as points
+  select child_id, sum(points)::integer as points
   from deeds
   where child_id = @ChildId
   group by child_id
 ) d on d.child_id = c.id
 left join (
-  select child_id, sum(points) as points
+  select child_id, sum(points)::integer as points
   from redemptions
   where child_id = @ChildId
   group by child_id
