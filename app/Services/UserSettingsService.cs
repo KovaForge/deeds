@@ -23,11 +23,18 @@ public class UserSettingsService
             return _cachedParentId.Value;
         }
 
-        var value = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", ParentIdKey);
-        if (Guid.TryParse(value, out var id))
+        try
         {
-            _cachedParentId = id;
-            return id;
+            var value = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", ParentIdKey);
+            if (Guid.TryParse(value, out var id))
+            {
+                _cachedParentId = id;
+                return id;
+            }
+        }
+        catch
+        {
+            // Gracefully handle environments where localStorage is unavailable/restricted
         }
 
         return null;
@@ -36,13 +43,27 @@ public class UserSettingsService
     public async Task SetParentIdAsync(Guid id)
     {
         _cachedParentId = id;
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", ParentIdKey, id.ToString());
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", ParentIdKey, id.ToString());
+        }
+        catch
+        {
+            // Ignore storage errors
+        }
     }
 
     public async Task ClearParentIdAsync()
     {
         _cachedParentId = null;
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ParentIdKey);
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ParentIdKey);
+        }
+        catch
+        {
+            // Ignore storage errors
+        }
     }
 
     public async Task<string?> GetChatGptKeyAsync()
@@ -52,8 +73,15 @@ public class UserSettingsService
             return _cachedChatGptKey;
         }
 
-        var value = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", ChatGptKey);
-        _cachedChatGptKey = string.IsNullOrWhiteSpace(value) ? null : value;
+        try
+        {
+            var value = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", ChatGptKey);
+            _cachedChatGptKey = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+        catch
+        {
+            _cachedChatGptKey = null;
+        }
         return _cachedChatGptKey;
     }
 
@@ -62,11 +90,25 @@ public class UserSettingsService
         _cachedChatGptKey = string.IsNullOrWhiteSpace(key) ? null : key?.Trim();
         if (_cachedChatGptKey is null)
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ChatGptKey);
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ChatGptKey);
+            }
+            catch
+            {
+                // Ignore storage errors
+            }
         }
         else
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", ChatGptKey, _cachedChatGptKey);
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", ChatGptKey, _cachedChatGptKey);
+            }
+            catch
+            {
+                // Ignore storage errors
+            }
         }
     }
 }

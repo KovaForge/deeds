@@ -1025,9 +1025,6 @@
 /workspaces/good-deeds/app/obj/Release/net8.0/compressed/ol9d875hjq-{0}-tptq2av103-tptq2av103.gz
 /workspaces/good-deeds/app/obj/Release/net8.0/compressed/rgjkfi8ufe-{0}-lfu7j35m59-lfu7j35m59.gz
 /workspaces/good-deeds/app/obj/Release/net8.0/compressed/47zfde0nbw-{0}-oyz0vx2fzb-oyz0vx2fzb.gz
-/workspaces/good-deeds/app/obj/Release/net8.0/compressed/7n82l5oxm6-{0}-7fimkyscul-7fimkyscul.gz
-/workspaces/good-deeds/app/obj/Release/net8.0/compressed/6kn7dxqbt2-{0}-ach4a3p3ry-ach4a3p3ry.gz
-/workspaces/good-deeds/app/obj/Release/net8.0/compressed/9e6ghiqx7g-{0}-7kueg21bvy-7kueg21bvy.gz
 /workspaces/good-deeds/app/obj/Release/net8.0/staticwebassets.build.json
 /workspaces/good-deeds/app/obj/Release/net8.0/staticwebassets.build.json.cache
 /workspaces/good-deeds/app/obj/Release/net8.0/staticwebassets.development.json
@@ -1038,3 +1035,6 @@
 /workspaces/good-deeds/app/obj/Release/net8.0/refint/App.dll
 /workspaces/good-deeds/app/obj/Release/net8.0/App.pdb
 /workspaces/good-deeds/app/obj/Release/net8.0/ref/App.dll
+/workspaces/good-deeds/app/obj/Release/net8.0/compressed/7n82l5oxm6-{0}-e8w3lsfcns-e8w3lsfcns.gz
+/workspaces/good-deeds/app/obj/Release/net8.0/compressed/6kn7dxqbt2-{0}-af8ua4dg1r-af8ua4dg1r.gz
+/workspaces/good-deeds/app/obj/Release/net8.0/compressed/9e6ghiqx7g-{0}-glirwv9gi2-glirwv9gi2.gz
