@@ -114,7 +114,7 @@ else
             var children = await ApiClient.GetChildrenAsync(_parentId!.Value);
             foreach (var child in children)
             {
-                var balance = await ApiClient.GetChildBalanceAsync(child.Id) ?? new BalanceDto(child.Id, 0, 0m);
+                var balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId!.Value) ?? new BalanceDto(child.Id, 0, 0m);
                 _children.Add(new ChildWithBalance(child, balance));
             }
         }

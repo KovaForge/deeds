@@ -163,14 +163,15 @@ else
 
         try
         {
-            _child = await ApiClient.GetChildAsync(ChildId);
+            var parentId = _parentId!.Value;
+            _child = await ApiClient.GetChildAsync(ChildId, parentId);
             if (_child is null)
             {
                 return;
             }
 
-            _balance = await ApiClient.GetChildBalanceAsync(ChildId);
-            _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId));
+            _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
+            _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
             _deedTypes.Clear();
             _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(_child.ParentId));
 
@@ -223,7 +224,7 @@ else
     {
         try
         {
-            await ApiClient.DeleteDeedAsync(ChildId, deedId);
+            await ApiClient.DeleteDeedAsync(ChildId, deedId, _parentId!.Value);
             await LoadAsync();
         }
         catch (Exception ex)

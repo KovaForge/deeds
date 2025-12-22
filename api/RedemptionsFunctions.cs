@@ -16,6 +16,11 @@ public class RedemptionsFunctions
     public async Task<HttpResponseData> CreateRedemption(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "redemptions")] HttpRequestData req)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
+
         CreateRedemption? payload;
         try
         {
@@ -47,7 +52,7 @@ public class RedemptionsFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        if (child.ParentId != payload.CreatedBy)
+        if (child.ParentId != payload.CreatedBy || child.ParentId != parentId)
         {
             return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "You cannot redeem for another parent");
         }
@@ -60,7 +65,7 @@ public class RedemptionsFunctions
 
         if (balance.Points < payload.Points)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Insufficient points to redeem");
+            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Insufficient points to redeem");
         }
 
         var description = string.IsNullOrWhiteSpace(payload.Description) ? null : payload.Description.Trim();
@@ -75,10 +80,20 @@ public class RedemptionsFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/redemptions")] HttpRequestData req,
         Guid childId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
         if (child is null)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        if (child.ParentId != parentId)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var redemptions = await Data.GetRedemptionsForChild(_cs, childId);

@@ -1,0 +1,3 @@
+/tmp/app-publish/staticwebapp.config.json
+/tmp/app-publish/emcc-props.json
+/tmp/app-publish/web.config

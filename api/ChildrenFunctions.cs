@@ -17,6 +17,11 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "parents/{parentId:guid}/children")] HttpRequestData req,
         Guid parentId)
     {
+        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        {
+            return guardError!;
+        }
+
         CreateChild? payload;
 
         try
@@ -67,6 +72,11 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/{parentId:guid}/children")] HttpRequestData req,
         Guid parentId)
     {
+        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        {
+            return guardError!;
+        }
+
         var parent = await Data.GetParentById(_cs, parentId);
         if (parent is null)
         {
@@ -84,6 +94,11 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", "patch", Route = "children/{childId:guid}")] HttpRequestData req,
         Guid childId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
+        {
+            return error;
+        }
+
         UpdateChild? payload;
         try
         {
@@ -103,6 +118,11 @@ public class ChildrenFunctions
         if (existing is null)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        if (existing.ParentId != parentId)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         if (payload.ParentId != Guid.Empty && payload.ParentId != existing.ParentId)
@@ -138,10 +158,20 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}")] HttpRequestData req,
         Guid childId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
+        {
+            return error;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
         if (child is null)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        if (child.ParentId != parentId)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var res = req.CreateResponse(HttpStatusCode.OK);
@@ -155,6 +185,11 @@ public class ChildrenFunctions
         Guid parentId,
         Guid childId)
     {
+        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        {
+            return guardError!;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
         if (child is null)
         {

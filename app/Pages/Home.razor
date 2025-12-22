@@ -92,8 +92,8 @@ else
 			var balanceTasks = children.Select(async child => new
 			{
 				Child = child,
-				Balance = await ApiClient.GetChildBalanceAsync(child.Id),
-				Deeds = await ApiClient.GetDeedsForChildAsync(child.Id)
+				Balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId.Value),
+				Deeds = await ApiClient.GetDeedsForChildAsync(child.Id, _parentId.Value)
 			});
 
 			foreach (var result in await Task.WhenAll(balanceTasks))

@@ -48,14 +48,33 @@ public class ApiClient
 
     public async Task<IReadOnlyList<ChildDto>> GetChildrenAsync(Guid parentId)
     {
-    var items = await _http.GetFromJsonAsync<List<ChildDto>>($"parents/{parentId}/children");
-    return items ?? new List<ChildDto>();
+        var req = new HttpRequestMessage(HttpMethod.Get, $"parents/{parentId}/children");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            var items = await res.Content.ReadFromJsonAsync<List<ChildDto>>();
+            return items ?? new List<ChildDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<ChildDto>();
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to load children");
     }
 
     public async Task<ChildDto> CreateChildAsync(Guid parentId, string name, decimal dollarPerPoint)
     {
-        var request = new CreateChildRequest(parentId, name, dollarPerPoint);
-        var response = await _http.PostAsJsonAsync($"parents/{parentId}/children", request);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"parents/{parentId}/children")
+        {
+            Content = JsonContent.Create(new CreateChildRequest(parentId, name, dollarPerPoint))
+        };
+        request.Headers.Add("x-parent-id", parentId.ToString());
+
+        var response = await _http.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             return (await response.Content.ReadFromJsonAsync<ChildDto>())!;
@@ -65,15 +84,34 @@ public class ApiClient
         throw new InvalidOperationException(error ?? "Unable to create child");
     }
 
-    public async Task<ChildDto?> GetChildAsync(Guid childId)
+    public async Task<ChildDto?> GetChildAsync(Guid childId, Guid parentId)
     {
-        return await _http.GetFromJsonAsync<ChildDto>($"children/{childId}");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"children/{childId}?parentId={parentId}");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            return await res.Content.ReadFromJsonAsync<ChildDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to fetch child");
     }
 
     public async Task<ChildDto?> UpdateChildAsync(Guid childId, Guid parentId, string name, decimal dollarPerPoint)
     {
-        var request = new UpdateChildRequest(parentId, name, dollarPerPoint);
-        var response = await _http.PutAsJsonAsync($"children/{childId}", request);
+        var request = new HttpRequestMessage(HttpMethod.Put, $"children/{childId}")
+        {
+            Content = JsonContent.Create(new UpdateChildRequest(parentId, name, dollarPerPoint))
+        };
+        request.Headers.Add("x-parent-id", parentId.ToString());
+
+        var response = await _http.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<ChildDto>();
@@ -90,7 +128,9 @@ public class ApiClient
 
     public async Task DeleteChildAsync(Guid parentId, Guid childId)
     {
-        var response = await _http.DeleteAsync($"parents/{parentId}/children/{childId}");
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"parents/{parentId}/children/{childId}");
+        request.Headers.Add("x-parent-id", parentId.ToString());
+        var response = await _http.SendAsync(request);
         if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
         {
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -103,20 +143,54 @@ public class ApiClient
         }
     }
 
-    public async Task<BalanceDto?> GetChildBalanceAsync(Guid childId)
+    public async Task<BalanceDto?> GetChildBalanceAsync(Guid childId, Guid parentId)
     {
-        return await _http.GetFromJsonAsync<BalanceDto>($"children/{childId}/balance");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"children/{childId}/balance?parentId={parentId}");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            return await res.Content.ReadFromJsonAsync<BalanceDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to fetch balance");
     }
 
     public async Task<IReadOnlyList<DeedTypeDto>> GetDeedTypesAsync(Guid parentId)
     {
-    var items = await _http.GetFromJsonAsync<List<DeedTypeDto>>($"parents/{parentId}/deed-types");
-    return items ?? new List<DeedTypeDto>();
+        var req = new HttpRequestMessage(HttpMethod.Get, $"parents/{parentId}/deed-types");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            var items = await res.Content.ReadFromJsonAsync<List<DeedTypeDto>>();
+            return items ?? new List<DeedTypeDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<DeedTypeDto>();
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to load deed types");
     }
 
     public async Task<DeedTypeDto> CreateDeedTypeAsync(Guid parentId, string name, int points)
     {
-        var response = await _http.PostAsJsonAsync($"parents/{parentId}/deed-types", new CreateDeedTypeRequest(parentId, name, points));
+        var request = new HttpRequestMessage(HttpMethod.Post, $"parents/{parentId}/deed-types")
+        {
+            Content = JsonContent.Create(new CreateDeedTypeRequest(parentId, name, points))
+        };
+        request.Headers.Add("x-parent-id", parentId.ToString());
+
+        var response = await _http.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             return (await response.Content.ReadFromJsonAsync<DeedTypeDto>())!;
@@ -128,7 +202,9 @@ public class ApiClient
 
     public async Task DeleteDeedTypeAsync(Guid parentId, Guid deedTypeId)
     {
-        var response = await _http.DeleteAsync($"parents/{parentId}/deed-types/{deedTypeId}");
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"parents/{parentId}/deed-types/{deedTypeId}");
+        request.Headers.Add("x-parent-id", parentId.ToString());
+        var response = await _http.SendAsync(request);
         if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
         {
             var error = await ReadErrorAsync(response);
@@ -138,7 +214,13 @@ public class ApiClient
 
     public async Task<DeedDto> CreateDeedAsync(Guid childId, Guid deedTypeId, int points, string? note, Guid createdBy)
     {
-        var response = await _http.PostAsJsonAsync("deeds", new CreateDeedRequest(childId, deedTypeId, points, note, createdBy));
+        var request = new HttpRequestMessage(HttpMethod.Post, "deeds")
+        {
+            Content = JsonContent.Create(new CreateDeedRequest(childId, deedTypeId, points, note, createdBy))
+        };
+        request.Headers.Add("x-parent-id", createdBy.ToString());
+
+        var response = await _http.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             return (await response.Content.ReadFromJsonAsync<DeedDto>())!;
@@ -148,15 +230,31 @@ public class ApiClient
         throw new InvalidOperationException(error ?? "Unable to create deed");
     }
 
-    public async Task<IReadOnlyList<DeedDto>> GetDeedsForChildAsync(Guid childId)
+    public async Task<IReadOnlyList<DeedDto>> GetDeedsForChildAsync(Guid childId, Guid parentId)
     {
-    var items = await _http.GetFromJsonAsync<List<DeedDto>>($"children/{childId}/deeds");
-    return items ?? new List<DeedDto>();
+        var req = new HttpRequestMessage(HttpMethod.Get, $"children/{childId}/deeds?parentId={parentId}");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            var items = await res.Content.ReadFromJsonAsync<List<DeedDto>>();
+            return items ?? new List<DeedDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<DeedDto>();
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to load deeds");
     }
 
-    public async Task DeleteDeedAsync(Guid childId, Guid deedId)
+    public async Task DeleteDeedAsync(Guid childId, Guid deedId, Guid parentId)
     {
-        var response = await _http.DeleteAsync($"children/{childId}/deeds/{deedId}");
+        var req = new HttpRequestMessage(HttpMethod.Delete, $"children/{childId}/deeds/{deedId}?parentId={parentId}");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var response = await _http.SendAsync(req);
         if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
         {
             var error = await ReadErrorAsync(response);

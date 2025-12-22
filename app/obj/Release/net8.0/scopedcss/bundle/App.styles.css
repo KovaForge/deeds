@@ -1,0 +1,37 @@
+/* /Layout/MainLayout.razor.rz.scp.css */
+.app-shell[b-6ybmg00zxv] {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #f5f7fb 0%, #ffffff 80%);
+}
+
+.main-content[b-6ybmg00zxv] {
+    flex: 1;
+}
+/* /Layout/NavMenu.razor.rz.scp.css */
+.top-nav[b-bnfq9be44y] {
+    background: linear-gradient(135deg, #5b6df7, #3c52d9);
+    box-shadow: 0 4px 12px rgba(60, 82, 217, 0.24);
+}
+
+.navbar-brand[b-bnfq9be44y] {
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+}
+
+.navbar-nav .nav-link[b-bnfq9be44y] {
+    margin-inline: 0.25rem;
+    border-radius: 999px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.navbar-nav .nav-link.active[b-bnfq9be44y],
+.navbar-nav .nav-link:hover[b-bnfq9be44y] {
+    background-color: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+.navbar-nav .nav-link[b-bnfq9be44y] {
+    color: rgba(255, 255, 255, 0.8);
+}

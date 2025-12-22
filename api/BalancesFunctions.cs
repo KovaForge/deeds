@@ -16,10 +16,20 @@ public class BalancesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/balance")] HttpRequestData req,
         Guid childId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
+        {
+            return error;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
         if (child is null)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        if (child.ParentId != parentId)
+        {
+            return ParentGuard.CreateError(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var balance = await Data.GetBalance(_cs, childId) ?? new BalanceDto(childId, 0, 0m);

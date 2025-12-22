@@ -16,6 +16,11 @@ public class DeedsFunctions
     public async Task<HttpResponseData> CreateDeed(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "deeds")] HttpRequestData req)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
+
         CreateDeed? payload;
         try
         {
@@ -42,7 +47,7 @@ public class DeedsFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        if (child.ParentId != payload.CreatedBy)
+        if (child.ParentId != payload.CreatedBy || child.ParentId != parentId)
         {
             return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "You cannot log deeds for another parent");
         }
@@ -78,10 +83,20 @@ public class DeedsFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/deeds")] HttpRequestData req,
         Guid childId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
         if (child is null)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        if (child.ParentId != parentId)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var deeds = await Data.GetDeedsForChild(_cs, childId);
@@ -96,6 +111,11 @@ public class DeedsFunctions
         Guid childId,
         Guid deedId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
         if (child is null)
         {
@@ -103,7 +123,7 @@ public class DeedsFunctions
         }
 
         var details = await Data.GetDeedDetails(_cs, deedId);
-        if (details is null || details.ChildId != childId)
+        if (details is null || details.ChildId != childId || details.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
         }

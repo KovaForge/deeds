@@ -17,6 +17,10 @@ public class DeedTypesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "parents/{parentId:guid}/deed-types")] HttpRequestData req,
         Guid parentId)
     {
+        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        {
+            return guardError!;
+        }
         CreateDeedType? payload;
         try
         {
@@ -71,6 +75,10 @@ public class DeedTypesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/{parentId:guid}/deed-types")] HttpRequestData req,
         Guid parentId)
     {
+        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        {
+            return guardError!;
+        }
         var parent = await Data.GetParentById(_cs, parentId);
         if (parent is null)
         {
@@ -88,6 +96,10 @@ public class DeedTypesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", "patch", Route = "deed-types/{deedTypeId:guid}")] HttpRequestData req,
         Guid deedTypeId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
         UpdateDeedType? payload;
         try
         {
@@ -112,6 +124,11 @@ public class DeedTypesFunctions
         if (payload.ParentId != Guid.Empty && payload.ParentId != existing.ParentId)
         {
             return await CreateErrorResponse(req, HttpStatusCode.Conflict, "ParentId mismatch");
+        }
+
+        if (existing.ParentId != parentId)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Deed type does not belong to this parent");
         }
 
         if (string.IsNullOrWhiteSpace(payload.Name))
@@ -148,6 +165,11 @@ public class DeedTypesFunctions
         Guid parentId,
         Guid deedTypeId)
     {
+        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        {
+            return guardError!;
+        }
+
         var details = await Data.GetDeedTypeDetails(_cs, deedTypeId);
         if (details is null)
         {
