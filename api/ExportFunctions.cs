@@ -16,8 +16,13 @@ public class ExportFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/export/csv")] HttpRequestData req,
         Guid childId)
     {
+        if (!ParentGuard.TryGetParent(req, out var parentId, out var guardError))
+        {
+            return guardError;
+        }
+
         var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
         }

@@ -14,13 +14,8 @@ public class DeedTypesFunctions
 
     [Function("CreateDeedType")]
     public async Task<HttpResponseData> CreateDeedType(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "parents/{parentId:guid}/deed-types")] HttpRequestData req,
-        Guid parentId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "deed-types")] HttpRequestData req)
     {
-        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
-        {
-            return guardError!;
-        }
         CreateDeedType? payload;
         try
         {
@@ -36,9 +31,10 @@ public class DeedTypesFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
-        if (payload.ParentId != Guid.Empty && payload.ParentId != parentId)
+        var payloadParentId = payload.ParentId;
+        if (!ParentGuard.TryGetParent(req, payloadParentId, out var parentId, out var guardError))
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ParentId mismatch");
+            return guardError!;
         }
 
         var parent = await Data.GetParentById(_cs, parentId);
@@ -96,10 +92,6 @@ public class DeedTypesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", "patch", Route = "deed-types/{deedTypeId:guid}")] HttpRequestData req,
         Guid deedTypeId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
-        {
-            return parentError;
-        }
         UpdateDeedType? payload;
         try
         {
@@ -115,6 +107,11 @@ public class DeedTypesFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
+        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var parentError))
+        {
+            return parentError;
+        }
+
         var existing = await Data.GetDeedTypeById(_cs, deedTypeId);
         if (existing is null)
         {
@@ -128,7 +125,7 @@ public class DeedTypesFunctions
 
         if (existing.ParentId != parentId)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Deed type does not belong to this parent");
+            return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
         if (string.IsNullOrWhiteSpace(payload.Name))
@@ -178,7 +175,7 @@ public class DeedTypesFunctions
 
         if (details.ParentId != parentId)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Deed type does not belong to this parent");
+            return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
         var removed = await Data.DeleteDeedType(_cs, deedTypeId);

@@ -33,7 +33,7 @@ good-deeds/
 
 ### API Project (`api/`)
 
-- `Program.cs` boots the Functions host, binds configuration, and ensures the database schema.
+- `Program.cs` boots the Functions host, normalizes the Postgres connection string, and auto-applies SQL migrations from `api/sql` at startup.
 - `Data.cs` centralizes Dapper helpers for CRUD operations and CSV export logic.
 - Function classes grouped by domain (`ParentsFunctions`, `ChildrenFunctions`, `DeedsFunctions`, etc.) expose HTTP endpoints.
 
@@ -95,9 +95,9 @@ The dev server defaults to `https://localhost:7032` (and `http://localhost:5269`
 
 ## First-Time Use
 
-1. Visit the **Settings** page and enter a parent email. The API will create or re-link the parent and cache the id locally.
-2. Optional: paste an OpenAI API key to enable the **Ask ChatGPT for points** button on the child detail page. Keys stay in browser local storage only.
-3. Head to **Children** to add child profiles, then **Deed Types** to define reusable positive or negative deeds.
+1. Visit the **Quick Start** page to create a parent, add a child, add a deed type, log a deed, redeem points, and view balance from one screen.
+2. Optional: paste an OpenAI API key in **Settings** to enable the **Ask ChatGPT for points** button on the child detail page. Keys stay in browser local storage only.
+3. Head to **Children** to manage children, then **Deed Types** to define reusable deeds.
 4. Open a child profile to log deeds, delete mistakes, trigger redemptions, and view balance history.
 
 ## REST API Summary
@@ -105,26 +105,77 @@ The dev server defaults to `https://localhost:7032` (and `http://localhost:5269`
 | Method | Route | Description |
 |--------|-------|-------------|
 | GET | `/api/health` | Ping endpoint for uptime checks |
-| POST | `/api/parents` | Create parent by email |
-| GET | `/api/parents?email=` | Find parent by email |
-| GET | `/api/parents/{id}` | Retrieve parent by id |
-| POST | `/api/parents/{parentId}/children` | Create child |
-| GET | `/api/parents/{parentId}/children` | List children for parent |
-| GET | `/api/children/{childId}` | Get child detail |
-| PUT | `/api/children/{childId}` | Update child name or rate |
-| DELETE | `/api/parents/{parentId}/children/{childId}` | Remove child (cascades deeds and redemptions) |
-| GET | `/api/children/{childId}/balance` | Current points and dollar balance |
-| POST | `/api/parents/{parentId}/deed-types` | Create deed type |
-| GET | `/api/parents/{parentId}/deed-types` | List deed types |
-| DELETE | `/api/parents/{parentId}/deed-types/{deedTypeId}` | Remove deed type |
-| POST | `/api/deeds` | Log a deed for a child |
-| GET | `/api/children/{childId}/deeds` | List deeds for a child |
-| DELETE | `/api/children/{childId}/deeds/{deedId}` | Delete a deed |
-| POST | `/api/redemptions` | Redeem points |
-| GET | `/api/children/{childId}/redemptions` | List redemptions for a child |
-| GET | `/api/children/{childId}/export/csv` | Download deed and redemption history as CSV |
+| POST | `/api/parents` | Create or re-link a parent by email |
+| POST | `/api/children` | Create a child (requires `x-parent-id` or `parentId` in body) |
+| POST | `/api/deed-types` | Create a deed type for the parent |
+| POST | `/api/deeds` | Log a deed; resolves points from the deed type when not provided |
+| POST | `/api/redemptions` | Redeem points for a child (fails if insufficient) |
+| GET | `/api/balances/{childId}` | Current points and dollar balance for a child |
+
+Additional helper routes remain available for lookups and exports (e.g., `GET /api/parents?email=`, `GET /api/parents/{parentId}/children`, `GET /api/children/{childId}/deeds`, `GET /api/children/{childId}/export/csv`).
 
 Responses use JSON unless noted. Errors follow `{ "error": "message" }`.
+
+### Curl examples
+
+Set a base URL first (defaults shown assume local Functions):
+
+```bash
+BASE="http://localhost:7071/api"
+```
+
+Create or load a parent by email (returns 201 for new, 200 if existing):
+
+```bash
+curl -i -X POST "$BASE/parents" \
+	-H "Content-Type: application/json" \
+	-d '{"email":"parent@example.com"}'
+```
+
+Create a child:
+
+```bash
+PARENT_ID="<parent-guid>"
+curl -i -X POST "$BASE/children" \
+	-H "Content-Type: application/json" \
+	-H "x-parent-id: $PARENT_ID" \
+	-d '{"parentId":"'$PARENT_ID'","name":"Sam","dollarPerPoint":1.5}'
+```
+
+Create a deed type:
+
+```bash
+curl -i -X POST "$BASE/deed-types" \
+	-H "Content-Type: application/json" \
+	-H "x-parent-id: $PARENT_ID" \
+	-d '{"parentId":"'$PARENT_ID'","name":"Wash dishes","points":3}'
+```
+
+Log a deed (points optional; falls back to deed type points):
+
+```bash
+CHILD_ID="<child-guid>"
+DEED_TYPE_ID="<deed-type-guid>"
+curl -i -X POST "$BASE/deeds" \
+	-H "Content-Type: application/json" \
+	-H "x-parent-id: $PARENT_ID" \
+	-d '{"parentId":"'$PARENT_ID'","childId":"'$CHILD_ID'","deedTypeId":"'$DEED_TYPE_ID'","note":"Evening chores"}'
+```
+
+Redeem points (fails with 409 if balance too low):
+
+```bash
+curl -i -X POST "$BASE/redemptions" \
+	-H "Content-Type: application/json" \
+	-H "x-parent-id: $PARENT_ID" \
+	-d '{"parentId":"'$PARENT_ID'","childId":"'$CHILD_ID'","points":5,"description":"Treat"}'
+```
+
+Get balance:
+
+```bash
+curl -i -X GET "$BASE/balances/$CHILD_ID" -H "x-parent-id: $PARENT_ID"
+```
 
 ## Deployment Notes
 

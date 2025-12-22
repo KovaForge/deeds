@@ -16,11 +16,6 @@ public class RedemptionsFunctions
     public async Task<HttpResponseData> CreateRedemption(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "redemptions")] HttpRequestData req)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
-        {
-            return parentError;
-        }
-
         CreateRedemption? payload;
         try
         {
@@ -36,9 +31,9 @@ public class RedemptionsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
-        if (payload.ChildId == Guid.Empty || payload.CreatedBy == Guid.Empty)
+        if (payload.ChildId == Guid.Empty)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ChildId and CreatedBy are required");
+            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ChildId is required");
         }
 
         if (payload.Points <= 0)
@@ -46,15 +41,15 @@ public class RedemptionsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Points must be greater than zero");
         }
 
-        var child = await Data.GetChildById(_cs, payload.ChildId);
-        if (child is null)
+        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var parentError))
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
+            return parentError;
         }
 
-        if (child.ParentId != payload.CreatedBy || child.ParentId != parentId)
+        var child = await Data.GetChildById(_cs, payload.ChildId);
+        if (child is null || child.ParentId != parentId)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "You cannot redeem for another parent");
+            return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
         var balance = await Data.GetBalance(_cs, payload.ChildId);
@@ -65,11 +60,12 @@ public class RedemptionsFunctions
 
         if (balance.Points < payload.Points)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Insufficient points to redeem");
+            return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Insufficient points to redeem");
         }
 
         var description = string.IsNullOrWhiteSpace(payload.Description) ? null : payload.Description.Trim();
-        var created = await Data.CreateRedemption(_cs, payload.ChildId, payload.Points, description, payload.CreatedBy, DateTimeOffset.UtcNow);
+        var createdBy = string.IsNullOrWhiteSpace(payload.CreatedBy) ? parentId.ToString() : payload.CreatedBy.Trim();
+        var created = await Data.CreateRedemption(_cs, payload.ChildId, payload.Points, description, createdBy, DateTimeOffset.UtcNow);
         var res = req.CreateResponse(HttpStatusCode.Created);
         await res.WriteAsJsonAsync(created);
         return res;
@@ -86,14 +82,9 @@ public class RedemptionsFunctions
         }
 
         var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        if (child.ParentId != parentId)
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var redemptions = await Data.GetRedemptionsForChild(_cs, childId);

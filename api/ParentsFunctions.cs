@@ -36,7 +36,9 @@ public class ParentsFunctions
         var existing = await Data.GetParentByEmail(_cs, normalizedEmail);
         if (existing is not null)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Parent already exists");
+            var existsResponse = req.CreateResponse(HttpStatusCode.OK);
+            await existsResponse.WriteAsJsonAsync(existing);
+            return existsResponse;
         }
 
         var created = await Data.CreateParent(_cs, normalizedEmail);

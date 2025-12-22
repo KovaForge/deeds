@@ -10,11 +10,12 @@ public record UpdateChildRequest(Guid ParentId, string Name, decimal DollarPerPo
 public record DeedTypeDto(Guid Id, Guid ParentId, string Name, int Points, bool Active);
 public record CreateDeedTypeRequest(Guid ParentId, string Name, int Points);
 
-public record DeedDto(Guid Id, Guid ChildId, Guid DeedTypeId, int Points, string? Note, DateTimeOffset OccurredAt, Guid CreatedBy);
-public record CreateDeedRequest(Guid ChildId, Guid DeedTypeId, int Points, string? Note, Guid CreatedBy);
+public record DeedDto(Guid Id, Guid ChildId, Guid DeedTypeId, int Points, string? Note, DateTimeOffset OccurredAt, string CreatedBy);
+public record CreateDeedRequest(Guid ParentId, Guid ChildId, Guid DeedTypeId, int? Points, string? Note, string? CreatedBy);
 
 public record BalanceDto(Guid ChildId, int Points, decimal Dollars);
 
-public record CreateRedemptionRequest(Guid ChildId, int Points, string? Description, Guid CreatedBy);
+public record RedemptionDto(Guid Id, Guid ChildId, int Points, string? Description, DateTimeOffset CreatedAt, string CreatedBy);
+public record CreateRedemptionRequest(Guid ParentId, Guid ChildId, int Points, string? Description, string? CreatedBy);
 
 public record ErrorResponse(string Error);

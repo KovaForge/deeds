@@ -14,14 +14,8 @@ public class ChildrenFunctions
 
     [Function("CreateChild")]
     public async Task<HttpResponseData> CreateChild(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "parents/{parentId:guid}/children")] HttpRequestData req,
-        Guid parentId)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "children")] HttpRequestData req)
     {
-        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
-        {
-            return guardError!;
-        }
-
         CreateChild? payload;
 
         try
@@ -38,9 +32,10 @@ public class ChildrenFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
-        if (payload.ParentId != Guid.Empty && payload.ParentId != parentId)
+        var payloadParentId = payload.ParentId;
+        if (!ParentGuard.TryGetParent(req, payloadParentId, out var parentId, out var guardError))
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ParentId mismatch");
+            return guardError!;
         }
 
         var parent = await Data.GetParentById(_cs, parentId);
@@ -94,11 +89,6 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", "patch", Route = "children/{childId:guid}")] HttpRequestData req,
         Guid childId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
-        {
-            return error;
-        }
-
         UpdateChild? payload;
         try
         {
@@ -114,6 +104,11 @@ public class ChildrenFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
+        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var error))
+        {
+            return error;
+        }
+
         var existing = await Data.GetChildById(_cs, childId);
         if (existing is null)
         {
@@ -122,7 +117,7 @@ public class ChildrenFunctions
 
         if (existing.ParentId != parentId)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
+            return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
         if (payload.ParentId != Guid.Empty && payload.ParentId != existing.ParentId)
@@ -164,14 +159,9 @@ public class ChildrenFunctions
         }
 
         var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        if (child.ParentId != parentId)
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var res = req.CreateResponse(HttpStatusCode.OK);
@@ -191,14 +181,9 @@ public class ChildrenFunctions
         }
 
         var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        if (child.ParentId != parentId)
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var removed = await Data.DeleteChild(_cs, childId);

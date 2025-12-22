@@ -16,15 +16,15 @@ public static class Data
 create table if not exists parents(
   id uuid primary key,
   email text unique not null,
-  created_at timestamptz not null default now()
+  created_date timestamptz not null default now()
 );
 
 create table if not exists children(
   id uuid primary key,
   parent_id uuid not null references parents(id) on delete cascade,
   name text not null,
-  dollar_per_point numeric(10,2) not null default 1.00,
-  created_at timestamptz not null default now()
+  dollar_per_point numeric(12,2) not null default 1.00,
+  created_date timestamptz not null default now()
 );
 
 create table if not exists deed_types(
@@ -33,7 +33,6 @@ create table if not exists deed_types(
   name text not null,
   points integer not null,
   active boolean not null default true,
-  created_at timestamptz not null default now(),
   unique(parent_id, name)
 );
 
@@ -43,8 +42,9 @@ create table if not exists deeds(
   deed_type_id uuid not null references deed_types(id),
   points integer not null,
   note text,
-  occurred_at timestamptz not null default now(),
-  created_by uuid not null references parents(id)
+  occurred_at timestamptz not null,
+  created_by text not null,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists redemptions(
@@ -52,8 +52,8 @@ create table if not exists redemptions(
   child_id uuid not null references children(id) on delete cascade,
   points integer not null check(points > 0),
   description text,
-  created_at timestamptz not null default now(),
-  created_by uuid not null references parents(id)
+  created_by text not null,
+  created_at timestamptz not null default now()
 );";
     await using var db = Conn(cs);
     await db.ExecuteAsync(sql);
@@ -102,7 +102,7 @@ returning id, email;";
 
   public static async Task<IEnumerable<ChildDto>> GetChildrenForParent(string cs, Guid parentId)
   {
-    const string sql = "select id, parent_id, name, dollar_per_point from children where parent_id = @ParentId order by created_at";
+    const string sql = "select id, parent_id, name, dollar_per_point from children where parent_id = @ParentId order by created_date";
     await using var db = Conn(cs);
     return await db.QueryAsync<ChildDto>(sql, new { ParentId = parentId });
   }
@@ -152,7 +152,7 @@ returning id, parent_id, name, dollar_per_point;";
 
   public static async Task<IEnumerable<DeedTypeDto>> GetDeedTypesForParent(string cs, Guid parentId)
   {
-    const string sql = "select id, parent_id, name, points, active from deed_types where parent_id = @ParentId order by created_at";
+    const string sql = "select id, parent_id, name, points, active from deed_types where parent_id = @ParentId order by name";
     await using var db = Conn(cs);
     return await db.QueryAsync<DeedTypeDto>(sql, new { ParentId = parentId });
   }
@@ -210,7 +210,7 @@ returning id, parent_id, name, points, active;";
     return affected > 0;
   }
 
-  public static async Task<DeedDto> CreateDeed(string cs, Guid childId, Guid deedTypeId, int points, string? note, Guid createdBy, DateTimeOffset occurredAt)
+  public static async Task<DeedDto> CreateDeed(string cs, Guid childId, Guid deedTypeId, int points, string? note, string createdBy, DateTimeOffset occurredAt)
   {
     const string sql = @"
 insert into deeds(id, child_id, deed_type_id, points, note, occurred_at, created_by)
@@ -280,7 +280,7 @@ where d.id = @Id";
     return await db.QuerySingleOrDefaultAsync<DeedTypeDetails>(sql, new { Id = deedTypeId });
   }
 
-  public static async Task<RedemptionDto> CreateRedemption(string cs, Guid childId, int points, string? description, Guid createdBy, DateTimeOffset createdAt)
+  public static async Task<RedemptionDto> CreateRedemption(string cs, Guid childId, int points, string? description, string createdBy, DateTimeOffset createdAt)
   {
     const string sql = @"
 insert into redemptions(id, child_id, points, description, created_at, created_by)
@@ -317,13 +317,22 @@ order by created_at desc;";
     const string sql = @"
 select
   c.id as ChildId,
-  coalesce(sum(d.points), 0) - coalesce(sum(r.points), 0) as Points,
-  (coalesce(sum(d.points), 0) - coalesce(sum(r.points), 0)) * c.dollar_per_point as Dollars
+  coalesce(d.points, 0) - coalesce(r.points, 0) as Points,
+  (coalesce(d.points, 0) - coalesce(r.points, 0)) * c.dollar_per_point as Dollars
 from children c
-left join deeds d on d.child_id = c.id
-left join redemptions r on r.child_id = c.id
-where c.id = @ChildId
-group by c.id, c.dollar_per_point;";
+left join (
+  select child_id, sum(points) as points
+  from deeds
+  where child_id = @ChildId
+  group by child_id
+) d on d.child_id = c.id
+left join (
+  select child_id, sum(points) as points
+  from redemptions
+  where child_id = @ChildId
+  group by child_id
+) r on r.child_id = c.id
+where c.id = @ChildId;";
 
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<BalanceDto>(sql, new { ChildId = childId });
@@ -381,7 +390,7 @@ order by occurred_at;";
         row.DollarValue.ToString(CultureInfo.InvariantCulture),
         EscapeCsv(row.Note),
         row.OccurredAt.ToString("O", CultureInfo.InvariantCulture),
-        row.RecordedBy.ToString()
+        EscapeCsv(row.RecordedBy)
       });
       sb.AppendLine(line);
     }

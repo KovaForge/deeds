@@ -13,7 +13,7 @@ public class BalancesFunctions
 
     [Function("GetChildBalance")]
     public async Task<HttpResponseData> GetChildBalance(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/balance")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "balances/{childId:guid}")] HttpRequestData req,
         Guid childId)
     {
         if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
@@ -22,14 +22,9 @@ public class BalancesFunctions
         }
 
         var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        if (child.ParentId != parentId)
-        {
-            return ParentGuard.CreateError(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var balance = await Data.GetBalance(_cs, childId) ?? new BalanceDto(childId, 0, 0m);

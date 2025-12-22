@@ -2,6 +2,26 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+.page[b-aikm9ua061] {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.stack section {
+    margin-bottom: 1.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    max-width: 420px;
+}
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
 h1:focus {
     outline: none;
 }

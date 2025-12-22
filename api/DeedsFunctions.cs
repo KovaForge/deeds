@@ -16,11 +16,6 @@ public class DeedsFunctions
     public async Task<HttpResponseData> CreateDeed(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "deeds")] HttpRequestData req)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
-        {
-            return parentError;
-        }
-
         CreateDeed? payload;
         try
         {
@@ -36,26 +31,26 @@ public class DeedsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
-        if (payload.ChildId == Guid.Empty || payload.DeedTypeId == Guid.Empty || payload.CreatedBy == Guid.Empty)
+        if (payload.ChildId == Guid.Empty || payload.DeedTypeId == Guid.Empty)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ChildId, DeedTypeId and CreatedBy are required");
+            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ChildId and DeedTypeId are required");
+        }
+
+        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var parentError))
+        {
+            return parentError;
         }
 
         var child = await Data.GetChildById(_cs, payload.ChildId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        if (child.ParentId != payload.CreatedBy || child.ParentId != parentId)
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "You cannot log deeds for another parent");
-        }
-
         var deedType = await Data.GetDeedTypeById(_cs, payload.DeedTypeId);
-        if (deedType is null || deedType.ParentId != child.ParentId)
+        if (deedType is null || deedType.ParentId != parentId)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Deed type not found for this parent");
+            return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
         if (!deedType.Active)
@@ -63,7 +58,7 @@ public class DeedsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Deed type is inactive");
         }
 
-        var points = payload.Points != 0 ? payload.Points : deedType.Points;
+        var points = payload.Points ?? deedType.Points;
         if (points == 0)
         {
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Points must resolve to a non-zero value");
@@ -71,8 +66,9 @@ public class DeedsFunctions
 
         var note = string.IsNullOrWhiteSpace(payload.Note) ? null : payload.Note.Trim();
         var occurredAt = DateTimeOffset.UtcNow;
+        var createdBy = string.IsNullOrWhiteSpace(payload.CreatedBy) ? parentId.ToString() : payload.CreatedBy.Trim();
 
-        var created = await Data.CreateDeed(_cs, payload.ChildId, payload.DeedTypeId, points, note, payload.CreatedBy, occurredAt);
+        var created = await Data.CreateDeed(_cs, payload.ChildId, payload.DeedTypeId, points, note, createdBy, occurredAt);
         var res = req.CreateResponse(HttpStatusCode.Created);
         await res.WriteAsJsonAsync(created);
         return res;
@@ -89,14 +85,9 @@ public class DeedsFunctions
         }
 
         var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
+        if (child is null || child.ParentId != parentId)
         {
             return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        if (child.ParentId != parentId)
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.Forbidden, "Child does not belong to this parent");
         }
 
         var deeds = await Data.GetDeedsForChild(_cs, childId);

@@ -205,7 +205,8 @@ else
 
         try
         {
-            await ApiClient.CreateDeedAsync(ChildId, _form.DeedTypeId, _form.Points, string.IsNullOrWhiteSpace(_form.Note) ? null : _form.Note.Trim(), _parentId.Value);
+            var note = string.IsNullOrWhiteSpace(_form.Note) ? null : _form.Note.Trim();
+            await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, _parentId.Value.ToString());
             _form.Note = string.Empty;
             _suggestionReason = null;
             await LoadAsync();

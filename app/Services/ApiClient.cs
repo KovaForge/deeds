@@ -68,7 +68,7 @@ public class ApiClient
 
     public async Task<ChildDto> CreateChildAsync(Guid parentId, string name, decimal dollarPerPoint)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"parents/{parentId}/children")
+        var request = new HttpRequestMessage(HttpMethod.Post, "children")
         {
             Content = JsonContent.Create(new CreateChildRequest(parentId, name, dollarPerPoint))
         };
@@ -145,7 +145,7 @@ public class ApiClient
 
     public async Task<BalanceDto?> GetChildBalanceAsync(Guid childId, Guid parentId)
     {
-        var req = new HttpRequestMessage(HttpMethod.Get, $"children/{childId}/balance?parentId={parentId}");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"balances/{childId}?parentId={parentId}");
         req.Headers.Add("x-parent-id", parentId.ToString());
         var res = await _http.SendAsync(req);
         if (res.IsSuccessStatusCode)
@@ -184,7 +184,7 @@ public class ApiClient
 
     public async Task<DeedTypeDto> CreateDeedTypeAsync(Guid parentId, string name, int points)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"parents/{parentId}/deed-types")
+        var request = new HttpRequestMessage(HttpMethod.Post, "deed-types")
         {
             Content = JsonContent.Create(new CreateDeedTypeRequest(parentId, name, points))
         };
@@ -212,13 +212,13 @@ public class ApiClient
         }
     }
 
-    public async Task<DeedDto> CreateDeedAsync(Guid childId, Guid deedTypeId, int points, string? note, Guid createdBy)
+    public async Task<DeedDto> CreateDeedAsync(Guid parentId, Guid childId, Guid deedTypeId, int? points, string? note, string? createdBy)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "deeds")
         {
-            Content = JsonContent.Create(new CreateDeedRequest(childId, deedTypeId, points, note, createdBy))
+            Content = JsonContent.Create(new CreateDeedRequest(parentId, childId, deedTypeId, points, note, createdBy))
         };
-        request.Headers.Add("x-parent-id", createdBy.ToString());
+        request.Headers.Add("x-parent-id", parentId.ToString());
 
         var response = await _http.SendAsync(request);
         if (response.IsSuccessStatusCode)
@@ -260,6 +260,44 @@ public class ApiClient
             var error = await ReadErrorAsync(response);
             throw new InvalidOperationException(error ?? "Unable to delete deed");
         }
+    }
+
+    public async Task<RedemptionDto> CreateRedemptionAsync(Guid parentId, Guid childId, int points, string? description, string? createdBy)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "redemptions")
+        {
+            Content = JsonContent.Create(new CreateRedemptionRequest(parentId, childId, points, description, createdBy))
+        };
+        request.Headers.Add("x-parent-id", parentId.ToString());
+
+        var response = await _http.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<RedemptionDto>())!;
+        }
+
+        var error = await ReadErrorAsync(response);
+        throw new InvalidOperationException(error ?? "Unable to create redemption");
+    }
+
+    public async Task<IReadOnlyList<RedemptionDto>> GetRedemptionsForChildAsync(Guid childId, Guid parentId)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, $"children/{childId}/redemptions?parentId={parentId}");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            var items = await res.Content.ReadFromJsonAsync<List<RedemptionDto>>();
+            return items ?? new List<RedemptionDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<RedemptionDto>();
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to load redemptions");
     }
 
     private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)

@@ -1,0 +1,331 @@
+@page "/quickstart"
+@using GoodDeeds.Client.Models
+@inject ApiClient Api
+@inject UserSettingsService UserSettings
+
+<h3>Quick Start</h3>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+<div class="stack">
+    <section>
+        <h5>1) Create or load parent</h5>
+        <div class="form-grid">
+            <label>Email</label>
+            <input class="form-control" @bind="_parentEmail" />
+            <button class="btn btn-primary" @onclick="CreateParentAsync" type="button">Save parent</button>
+        </div>
+        @if (_parent is not null)
+        {
+            <p class="small text-muted">Parent ID: @_parent.Id</p>
+        }
+    </section>
+
+    <section>
+        <h5>2) Add a child</h5>
+        <div class="form-grid">
+            <label>Name</label>
+            <input class="form-control" @bind="_childName" />
+            <label>Dollar per point</label>
+            <input class="form-control" type="number" step="0.01" min="0.01" @bind-value="_childRate" @bind-value:event="oninput" />
+            <button class="btn btn-primary" @onclick="CreateChildAsync" type="button" disabled="@(!_hasParent)">Create child</button>
+        </div>
+        @if (_child is not null)
+        {
+            <p class="small text-muted">Child ID: @_child.Id</p>
+        }
+    </section>
+
+    <section>
+        <h5>3) Add a deed type</h5>
+        <div class="form-grid">
+            <label>Name</label>
+            <input class="form-control" @bind="_deedTypeName" />
+            <label>Points</label>
+            <input class="form-control" type="number" step="1" @bind-value="_deedTypePoints" @bind-value:event="oninput" />
+            <button class="btn btn-primary" @onclick="CreateDeedTypeAsync" type="button" disabled="@(!_hasParent)">Create deed type</button>
+        </div>
+        @if (_deedType is not null)
+        {
+            <p class="small text-muted">Deed type ID: @_deedType.Id (@_deedType.Points points)</p>
+        }
+    </section>
+
+    <section>
+        <h5>4) Log a deed</h5>
+        <div class="form-grid">
+            <label>Child ID</label>
+            <input class="form-control" @bind="_deedChildId" />
+            <label>Deed type ID</label>
+            <input class="form-control" @bind="_deedTypeId" />
+            <label>Override points (optional)</label>
+            <input class="form-control" type="number" step="1" @bind-value="_deedPointsOverride" @bind-value:event="oninput" />
+            <label>Note (optional)</label>
+            <input class="form-control" @bind="_deedNote" />
+            <button class="btn btn-primary" @onclick="LogDeedAsync" type="button" disabled="@(!_hasParent)">Log deed</button>
+        </div>
+        @if (_lastDeed is not null)
+        {
+            <p class="small text-muted">Saved deed @_lastDeed.Id for child @_lastDeed.ChildId (@_lastDeed.Points points)</p>
+        }
+    </section>
+
+    <section>
+        <h5>5) Redeem points</h5>
+        <div class="form-grid">
+            <label>Child ID</label>
+            <input class="form-control" @bind="_redeemChildId" />
+            <label>Points to redeem</label>
+            <input class="form-control" type="number" step="1" min="1" @bind-value="_redeemPoints" @bind-value:event="oninput" />
+            <label>Description (optional)</label>
+            <input class="form-control" @bind="_redeemDescription" />
+            <button class="btn btn-primary" @onclick="RedeemAsync" type="button" disabled="@(!_hasParent)">Redeem</button>
+        </div>
+        @if (_lastRedemption is not null)
+        {
+            <p class="small text-muted">Redeemed @_lastRedemption.Points points (id @_lastRedemption.Id)</p>
+        }
+    </section>
+
+    <section>
+        <h5>6) Check balance</h5>
+        <div class="form-grid">
+            <label>Child ID</label>
+            <input class="form-control" @bind="_balanceChildId" />
+            <button class="btn btn-secondary" @onclick="LoadBalanceAsync" type="button" disabled="@(!_hasParent)">Refresh</button>
+        </div>
+        @if (_balance is not null)
+        {
+            <p>Points: @_balance.Points</p>
+            <p>Dollar balance: @_balance.Dollars.ToString("C")</p>
+        }
+    </section>
+</div>
+
+@code {
+    private ParentDto? _parent;
+    private ChildDto? _child;
+    private DeedTypeDto? _deedType;
+    private DeedDto? _lastDeed;
+    private RedemptionDto? _lastRedemption;
+    private BalanceDto? _balance;
+
+    private string _parentEmail = string.Empty;
+    private string _childName = string.Empty;
+    private decimal _childRate = 1.00m;
+    private string _deedTypeName = string.Empty;
+    private int _deedTypePoints = 1;
+    private string _deedChildId = string.Empty;
+    private string _deedTypeId = string.Empty;
+    private int? _deedPointsOverride;
+    private string _deedNote = string.Empty;
+    private string _redeemChildId = string.Empty;
+    private int _redeemPoints = 1;
+    private string _redeemDescription = string.Empty;
+    private string _balanceChildId = string.Empty;
+    private string? _error;
+    private string? _success;
+
+    private bool _hasParent => _parent is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var saved = await UserSettings.GetParentIdAsync();
+        if (saved.HasValue)
+        {
+            try
+            {
+                _parent = await Api.GetParentAsync(saved.Value);
+                if (_parent is not null)
+                {
+                    _parentEmail = _parent.Email;
+                }
+            }
+            catch
+            {
+                _parent = null;
+            }
+        }
+    }
+
+    private void ClearStatus()
+    {
+        _error = null;
+        _success = null;
+    }
+
+    private async Task CreateParentAsync()
+    {
+        ClearStatus();
+        if (string.IsNullOrWhiteSpace(_parentEmail))
+        {
+            _error = "Email is required";
+            return;
+        }
+
+        try
+        {
+            _parent = await Api.CreateParentAsync(_parentEmail.Trim());
+            await UserSettings.SetParentIdAsync(_parent.Id);
+            _success = "Parent saved";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task CreateChildAsync()
+    {
+        ClearStatus();
+        if (_parent is null)
+        {
+            _error = "Create a parent first";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_childName))
+        {
+            _error = "Child name is required";
+            return;
+        }
+
+        try
+        {
+            _child = await Api.CreateChildAsync(_parent.Id, _childName.Trim(), _childRate);
+            _deedChildId = _child.Id.ToString();
+            _redeemChildId = _child.Id.ToString();
+            _balanceChildId = _child.Id.ToString();
+            _success = "Child created";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task CreateDeedTypeAsync()
+    {
+        ClearStatus();
+        if (_parent is null)
+        {
+            _error = "Create a parent first";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_deedTypeName))
+        {
+            _error = "Name is required";
+            return;
+        }
+
+        try
+        {
+            _deedType = await Api.CreateDeedTypeAsync(_parent.Id, _deedTypeName.Trim(), _deedTypePoints);
+            _deedTypeId = _deedType.Id.ToString();
+            _success = "Deed type created";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task LogDeedAsync()
+    {
+        ClearStatus();
+        if (_parent is null)
+        {
+            _error = "Create a parent first";
+            return;
+        }
+
+        if (!Guid.TryParse(_deedChildId, out var childId))
+        {
+            _error = "Valid child ID is required";
+            return;
+        }
+
+        if (!Guid.TryParse(_deedTypeId, out var deedTypeId))
+        {
+            _error = "Valid deed type ID is required";
+            return;
+        }
+
+        try
+        {
+            _lastDeed = await Api.CreateDeedAsync(_parent.Id, childId, deedTypeId, _deedPointsOverride, _deedNote, _parentEmail);
+            _success = "Deed logged";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task RedeemAsync()
+    {
+        ClearStatus();
+        if (_parent is null)
+        {
+            _error = "Create a parent first";
+            return;
+        }
+
+        if (!Guid.TryParse(_redeemChildId, out var childId))
+        {
+            _error = "Valid child ID is required";
+            return;
+        }
+
+        if (_redeemPoints <= 0)
+        {
+            _error = "Points must be greater than zero";
+            return;
+        }
+
+        try
+        {
+            _lastRedemption = await Api.CreateRedemptionAsync(_parent.Id, childId, _redeemPoints, _redeemDescription, _parentEmail);
+            _success = "Redemption saved";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task LoadBalanceAsync()
+    {
+        ClearStatus();
+        if (_parent is null)
+        {
+            _error = "Create a parent first";
+            return;
+        }
+
+        if (!Guid.TryParse(_balanceChildId, out var childId))
+        {
+            _error = "Valid child ID is required";
+            return;
+        }
+
+        try
+        {
+            _balance = await Api.GetChildBalanceAsync(childId, _parent.Id);
+            _success = "Balance refreshed";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}
