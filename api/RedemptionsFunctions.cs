@@ -9,7 +9,11 @@ public class RedemptionsFunctions
 
     public RedemptionsFunctions(DbOptions options)
     {
-        _cs = options.ConnectionString;
+        _cs = options?.ConnectionString ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(_cs))
+        {
+            throw new InvalidOperationException("Database connection string (DB environment variable) is not configured. Set the DB environment variable in Azure Static Web Apps configuration.");
+        }
     }
 
     [Function("CreateRedemption")]
