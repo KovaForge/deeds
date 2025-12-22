@@ -21,9 +21,14 @@ if (!apiBase.EndsWith('/'))
 	apiBase += "/";
 }
 
+// Resolve API base URL against the host base address
+var apiBaseUri = Uri.IsWellFormedUriString(apiBase, UriKind.Absolute)
+	? new Uri(apiBase)
+	: new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBase);
+
 builder.Services.AddScoped<ApiClient>(_ => new ApiClient(new HttpClient
 {
-	BaseAddress = new Uri(apiBase, UriKind.RelativeOrAbsolute)
+	BaseAddress = apiBaseUri
 }));
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<ChatGptService>();
