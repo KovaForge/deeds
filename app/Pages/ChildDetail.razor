@@ -28,7 +28,7 @@ else
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
             <h2 class="fw-bold mb-1">@_child.Name</h2>
-            <div class="text-muted">Reward rate @(_child.DollarPerPoint.ToString("C2")) per point</div>
+            <div class="text-muted">Reward rate $@(_child.DollarPerPoint.ToString("F2")) per point</div>
         </div>
     <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/children")'>Back to list</button>
     </div>
@@ -39,7 +39,7 @@ else
                 <div class="card-body">
                     <h5 class="card-title">Balance</h5>
                     <p class="display-6 fw-bold @(BalanceClass)">@(_balance?.Points ?? 0) pts</p>
-                    <p class="text-muted mb-0">@((_balance?.Dollars ?? 0m).ToString("C2")) total value</p>
+                    <p class="text-muted mb-0">$@((_balance?.Dollars ?? 0m).ToString("F2")) total value</p>
                 </div>
             </div>
 

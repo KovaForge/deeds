@@ -6,7 +6,10 @@
 
 <PageTitle>Children</PageTitle>
 
-<h2 class="fw-bold mb-3">Children</h2>
+<div class="d-flex align-items-center mb-3">
+    <h2 class="fw-bold mb-0">Children</h2>
+    <a href="settings" class="btn btn-outline-secondary btn-sm ms-auto">⚙️ Settings</a>
+</div>
 <p class="text-muted">Create profiles for each child, manage their reward rate, and jump into their deed history.</p>
 
 @if (_isLoading)
@@ -38,8 +41,8 @@ else
                                 <div class="list-group-item d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3">
                                     <div class="flex-fill">
                                         <div class="fw-semibold fs-5">@child.Child.Name</div>
-                                        <div class="text-muted small">Reward rate: @child.Child.DollarPerPoint.ToString("C2") per point</div>
-                                        <div class="small">Balance: <span class="fw-semibold @(child.Balance.Points >= 0 ? "points-positive" : "points-negative")">@child.Balance.Points pts</span> • @child.Balance.Dollars.ToString("C2")</div>
+                                        <div class="text-muted small">Reward rate: @FormatCurrency(child.Child.DollarPerPoint) per point</div>
+                                        <div class="small">Balance: <span class="fw-semibold @(child.Balance.Points >= 0 ? "points-positive" : "points-negative")">@child.Balance.Points pts</span> • @FormatCurrency(child.Balance.Dollars)</div>
                                     </div>
                                     <div class="d-flex gap-2">
                                         <button class="btn btn-outline-primary btn-sm" @onclick='() => Navigation.NavigateTo($"children/{child.Child.Id}")'>View profile</button>
@@ -208,4 +211,6 @@ else
         public string Name { get; set; } = string.Empty;
         public decimal DollarPerPoint { get; set; } = 1.0m;
     }
+
+    private static string FormatCurrency(decimal amount) => $"${amount:F2}";
 }

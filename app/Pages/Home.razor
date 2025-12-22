@@ -41,7 +41,7 @@ else
 				<div class="card-body">
 					<h5 class="card-title">Total Family Balance</h5>
 					<p class="display-6 fw-bold">@_totalPoints pts</p>
-					<p class="text-muted mb-0">Equivalent to @_totalDollars.ToString("C2")</p>
+					<p class="text-muted mb-0">Equivalent to $@_totalDollars.ToString("F2")</p>
 				</div>
 			</div>
 		</div>
@@ -59,7 +59,7 @@ else
 								</div>
 								<div class="text-end">
 									<div class="fw-semibold @(child.Points >= 0 ? "points-positive" : "points-negative")">@child.Points pts</div>
-									<small class="text-muted">@child.Dollars.ToString("C2")</small>
+									<small class="text-muted">$@child.Dollars.ToString("F2")</small>
 								</div>
 							</button>
 						}

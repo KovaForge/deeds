@@ -105,7 +105,7 @@
         @if (_balance is not null)
         {
             <p>Points: @_balance.Points</p>
-            <p>Dollar balance: @_balance.Dollars.ToString("C")</p>
+            <p>Dollar balance: $@_balance.Dollars.ToString("F2")</p>
         }
     </section>
 </div>
