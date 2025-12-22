@@ -11,25 +11,27 @@
 }
 /* /Layout/NavMenu.razor.rz.scp.css */
 .top-nav[b-bnfq9be44y] {
-    background: linear-gradient(135deg, #5b6df7, #3c52d9);
-    box-shadow: 0 4px 12px rgba(60, 82, 217, 0.24);
+    background: #f8f9fa;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-brand[b-bnfq9be44y] {
     font-size: 1.05rem;
     letter-spacing: 0.04em;
-    color: #1a2a4a !important;
+    color: #000 !important;
+    font-weight: 700;
 }
 
 .navbar-nav .nav-link[b-bnfq9be44y] {
     margin-inline: 0.25rem;
     border-radius: 999px;
     transition: background-color 0.2s ease, color 0.2s ease;
-    color: #2c3e50 !important;
+    color: #222 !important;
+    font-weight: 500;
 }
 
 .navbar-nav .nav-link.active[b-bnfq9be44y],
 .navbar-nav .nav-link:hover[b-bnfq9be44y] {
-    background-color: rgba(28, 42, 74, 0.15);
+    background-color: rgba(91, 109, 247, 0.15);
     color: #1a2a4a !important;
 }
