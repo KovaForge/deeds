@@ -12,7 +12,10 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 var apiBase = builder.Configuration["Api:BaseUrl"];
 if (string.IsNullOrWhiteSpace(apiBase))
 {
-	apiBase = "http://localhost:7071/api/";
+	// Use local Functions port for development; default to relative /api for hosted environments.
+	apiBase = builder.HostEnvironment.IsDevelopment()
+		? "http://localhost:7071/api/"
+		: "/api/";
 }
 else if (!apiBase.EndsWith('/'))
 {
