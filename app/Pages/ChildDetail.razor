@@ -49,26 +49,20 @@ else
                     <EditForm Model="_form" OnValidSubmit="CreateDeedAsync">
                         <DataAnnotationsValidator />
                         <div class="mb-3">
-                            <label class="form-label">Deed type</label>
-                            <select class="form-select" @onchange="OnDeedTypeChanged">
-                                <option value="">Select a deed type</option>
-                                @foreach (var deedType in _deedTypes)
-                                {
-                                    <option value="@deedType.Id" selected="@(deedType.Id == _form.DeedTypeId)">@deedType.Name (@(deedType.Points >= 0 ? "+" : string.Empty)@deedType.Points pts)</option>
-                                }
-                            </select>
+                            <label class="form-label">Condition or deed</label>
+                            <InputTextArea class="form-control" @bind-Value="_form.Condition" rows="3" placeholder="e.g., Complete a swimming level in class" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Points</label>
+                            <label class="form-label">Points (@(_form.Points >= 0 ? "+" : string.Empty)@_form.Points mins)</label>
                             <InputNumber class="form-control" @bind-Value="_form.Points" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Notes</label>
-                            <InputTextArea class="form-control" @bind-Value="_form.Note" rows="3" />
+                            <label class="form-label">Additional notes (optional)</label>
+                            <InputTextArea class="form-control" @bind-Value="_form.Note" rows="2" />
                         </div>
                         <div class="d-flex gap-2 mb-3">
-                            <button type="button" class="btn btn-outline-secondary flex-grow-1" @onclick="SuggestPointsAsync" disabled="@_isSuggesting">@(_isSuggesting ? "Contacting ChatGPT…" : "Ask ChatGPT for points")</button>
-                            <button class="btn btn-primary flex-grow-1" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving…" : "Save deed")</button>
+                            <button type="button" class="btn btn-outline-secondary flex-grow-1" @onclick="SuggestPointsAsync" disabled="@(_isSuggesting || string.IsNullOrWhiteSpace(_form.Condition))">@(_isSuggesting ? "Contacting ChatGPT…" : "Ask AI to suggest points")</button>
+                            <button class="btn btn-primary flex-grow-1" type="submit" disabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_form.Condition))">@(_isSubmitting ? "Saving…" : "Add deed")</button>
                         </div>
                     </EditForm>
                     @if (!string.IsNullOrWhiteSpace(_feedback))
@@ -78,7 +72,7 @@ else
                     @if (!string.IsNullOrWhiteSpace(_suggestionReason))
                     {
                         <div class="alert alert-info mt-3">
-                            <strong>ChatGPT suggestion:</strong>
+                            <strong>AI suggestion:</strong>
                             <div>@_suggestionReason</div>
                         </div>
                     }
@@ -101,16 +95,12 @@ else
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                                         <div>
-                                            <div class="fw-semibold">@DeedTypeName(deed.DeedTypeId)</div>
+                                            <div class="fw-semibold">@deed.Note</div>
                                             <div class="small text-muted">@deed.OccurredAt.ToLocalTime().ToString("g")</div>
-                                            @if (!string.IsNullOrWhiteSpace(deed.Note))
-                                            {
-                                                <div class="mt-2">@deed.Note</div>
-                                            }
                                         </div>
                                         <div class="text-end">
                                             <div class="fw-semibold @(deed.Points >= 0 ? "points-positive" : "points-negative")">
-                                                @(deed.Points >= 0 ? "+" : string.Empty)@deed.Points pts
+                                                @(deed.Points >= 0 ? "+" : string.Empty)@deed.Points mins
                                             </div>
                                             <button class="btn btn-link text-danger p-0" @onclick='() => DeleteDeedAsync(deed.Id)'>Remove</button>
                                         </div>
@@ -135,7 +125,6 @@ else
     private ChildDto? _child;
     private BalanceDto? _balance;
     private readonly List<DeedDto> _deeds = [];
-    private readonly List<DeedTypeDto> _deedTypes = [];
     private readonly DeedForm _form = new();
     private string? _feedback;
     private string? _suggestionReason;
@@ -172,15 +161,6 @@ else
 
             _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
             _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
-            _deedTypes.Clear();
-            _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(_child.ParentId));
-
-            if (_deedTypes.Count > 0 && _form.DeedTypeId == Guid.Empty)
-            {
-                var first = _deedTypes.First();
-                _form.DeedTypeId = first.Id;
-                _form.Points = first.Points;
-            }
         }
         catch (Exception ex)
         {
@@ -194,9 +174,9 @@ else
 
     private async Task CreateDeedAsync()
     {
-        if (_parentId is null || _form.DeedTypeId == Guid.Empty)
+        if (_parentId is null || string.IsNullOrWhiteSpace(_form.Condition))
         {
-            _feedback = "Select a deed type first.";
+            _feedback = "Enter a condition first.";
             return;
         }
 
@@ -205,9 +185,20 @@ else
 
         try
         {
-            var note = string.IsNullOrWhiteSpace(_form.Note) ? null : _form.Note.Trim();
-            await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, _parentId.Value.ToString());
+            // Create a default deed type GUID as placeholder (deeds don't actually use deed types in the new flow)
+            // We use a consistent UUID to represent "freeform deed"
+            var freeformDeedTypeId = new Guid("00000000-0000-0000-0000-000000000001");
+            
+            var note = $"{_form.Condition}";
+            if (!string.IsNullOrWhiteSpace(_form.Note))
+            {
+                note = $"{_form.Condition}\n\n{_form.Note.Trim()}";
+            }
+            
+            await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, freeformDeedTypeId, _form.Points, note, _parentId.Value.ToString());
+            _form.Condition = string.Empty;
             _form.Note = string.Empty;
+            _form.Points = 0;
             _suggestionReason = null;
             await LoadAsync();
         }
@@ -234,36 +225,18 @@ else
         }
     }
 
-    private string DeedTypeName(Guid deedTypeId)
-    {
-        return _deedTypes.FirstOrDefault(x => x.Id == deedTypeId)?.Name ?? "Deed";
-    }
-
     private async Task SuggestPointsAsync()
     {
-        if (_form.DeedTypeId == Guid.Empty)
+        if (string.IsNullOrWhiteSpace(_form.Condition))
         {
-            _feedback = "Select a deed type before asking ChatGPT.";
+            _feedback = "Describe the condition before asking for AI suggestions.";
             return;
         }
 
         var apiKey = await Settings.GetChatGptKeyAsync();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _feedback = "Add a ChatGPT API key in Settings to use suggestions.";
-            return;
-        }
-
-        var deedType = _deedTypes.FirstOrDefault(x => x.Id == _form.DeedTypeId);
-        if (deedType is null)
-        {
-            _feedback = "Deed type not found.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_form.Note))
-        {
-            _feedback = "Add a short note describing the deed so ChatGPT can score it.";
+            _feedback = "Add a ChatGPT API key in Settings to use AI suggestions.";
             return;
         }
 
@@ -272,10 +245,10 @@ else
 
         try
         {
-            var suggestion = await ChatGpt.SuggestPointsAsync(apiKey!, deedType.Name, deedType.Points >= 0, _form.Note!);
+            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(apiKey, _form.Condition);
             if (suggestion is null)
             {
-                _feedback = "ChatGPT could not suggest points right now.";
+                _feedback = "AI could not suggest points right now. Try again.";
                 return;
             }
 
@@ -292,22 +265,9 @@ else
         }
     }
 
-    private void OnDeedTypeChanged(ChangeEventArgs args)
-    {
-        if (Guid.TryParse(args.Value?.ToString(), out var deedTypeId))
-        {
-            _form.DeedTypeId = deedTypeId;
-            var deedType = _deedTypes.FirstOrDefault(x => x.Id == deedTypeId);
-            if (deedType is not null)
-            {
-                _form.Points = deedType.Points;
-            }
-        }
-    }
-
     private sealed class DeedForm
     {
-        public Guid DeedTypeId { get; set; }
+        public string? Condition { get; set; }
         public int Points { get; set; }
         public string? Note { get; set; }
     }
