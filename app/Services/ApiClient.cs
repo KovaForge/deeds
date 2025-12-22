@@ -21,7 +21,8 @@ public class ApiClient
         }
 
         var error = await ReadErrorAsync(response);
-        throw new InvalidOperationException(error ?? "Unable to create parent");
+        var message = error ?? $"Unable to create parent (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
     }
 
     public async Task<ParentDto?> FindParentByEmailAsync(string email)
@@ -38,7 +39,8 @@ public class ApiClient
         }
 
         var error = await ReadErrorAsync(response);
-        throw new InvalidOperationException(error ?? "Unable to lookup parent");
+        var message = error ?? $"Unable to lookup parent (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
     }
 
     public async Task<ParentDto?> GetParentAsync(Guid parentId)
@@ -63,7 +65,8 @@ public class ApiClient
         }
 
         var error = await ReadErrorAsync(res);
-        throw new InvalidOperationException(error ?? "Unable to load children");
+        var message = error ?? $"Unable to load children (Status: {(int)res.StatusCode} {res.StatusCode})";
+        throw new InvalidOperationException(message);
     }
 
     public async Task<ChildDto> CreateChildAsync(Guid parentId, string name, decimal dollarPerPoint)
@@ -81,7 +84,8 @@ public class ApiClient
         }
 
         var error = await ReadErrorAsync(response);
-        throw new InvalidOperationException(error ?? "Unable to create child");
+        var message = error ?? $"Unable to create child (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
     }
 
     public async Task<ChildDto?> GetChildAsync(Guid childId, Guid parentId)
