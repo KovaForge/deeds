@@ -56,10 +56,17 @@ public class ChildrenFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "DollarPerPoint must be greater than zero");
         }
 
-        var created = await Data.CreateChild(_cs, parentId, name, rate);
-        var res = req.CreateResponse(HttpStatusCode.Created);
-        await res.WriteAsJsonAsync(created);
-        return res;
+        try
+        {
+            var created = await Data.CreateChild(_cs, parentId, name, rate);
+            var res = req.CreateResponse(HttpStatusCode.Created);
+            await res.WriteAsJsonAsync(created);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to create child: {ex.Message}");
+        }
     }
 
     [Function("ListChildren")]

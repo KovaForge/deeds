@@ -33,18 +33,25 @@ public class ParentsFunctions
 
         var normalizedEmail = payload.Email.Trim().ToLowerInvariant();
 
-        var existing = await Data.GetParentByEmail(_cs, normalizedEmail);
-        if (existing is not null)
+        try
         {
-            var existsResponse = req.CreateResponse(HttpStatusCode.OK);
-            await existsResponse.WriteAsJsonAsync(existing);
-            return existsResponse;
-        }
+            var existing = await Data.GetParentByEmail(_cs, normalizedEmail);
+            if (existing is not null)
+            {
+                var existsResponse = req.CreateResponse(HttpStatusCode.OK);
+                await existsResponse.WriteAsJsonAsync(existing);
+                return existsResponse;
+            }
 
-        var created = await Data.CreateParent(_cs, normalizedEmail);
-        var res = req.CreateResponse(HttpStatusCode.Created);
-        await res.WriteAsJsonAsync(created);
-        return res;
+            var created = await Data.CreateParent(_cs, normalizedEmail);
+            var res = req.CreateResponse(HttpStatusCode.Created);
+            await res.WriteAsJsonAsync(created);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to create parent: {ex.Message}");
+        }
     }
 
     [Function("GetParent")]
@@ -74,15 +81,22 @@ public class ParentsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Email query parameter is required");
         }
 
-        var parent = await Data.GetParentByEmail(_cs, email.ToLowerInvariant());
-        if (parent is null)
+        try
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
+            var parent = await Data.GetParentByEmail(_cs, email.ToLowerInvariant());
+            if (parent is null)
+            {
+                return req.CreateResponse(HttpStatusCode.NotFound);
+            }
 
-        var res = req.CreateResponse(HttpStatusCode.OK);
-        await res.WriteAsJsonAsync(parent);
-        return res;
+            var res = req.CreateResponse(HttpStatusCode.OK);
+            await res.WriteAsJsonAsync(parent);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to find parent: {ex.Message}");
+        }
     }
 
     private static async Task<HttpResponseData> CreateErrorResponse(HttpRequestData req, HttpStatusCode status, string message)
