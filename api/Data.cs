@@ -316,9 +316,9 @@ order by created_at desc;";
   {
     const string sql = @"
 select
-  c.id as ChildId,
-  coalesce(d.points, 0) - coalesce(r.points, 0) as Points,
-  (coalesce(d.points, 0) - coalesce(r.points, 0)) * c.dollar_per_point as Dollars
+  c.id as ""ChildId"",
+  coalesce(d.points, 0) - coalesce(r.points, 0) as ""Points"",
+  (coalesce(d.points, 0) - coalesce(r.points, 0)) * c.dollar_per_point as ""Dollars""
 from children c
 left join (
   select child_id, sum(points) as points
