@@ -1035,6 +1035,6 @@
 /workspaces/good-deeds/app/obj/Debug/net8.0/staticwebassets.build.endpoints.json
 /workspaces/good-deeds/app/obj/Debug/net8.0/swae.build.ex.cache
 /workspaces/good-deeds/app/bin/Debug/net8.0/staticwebapp.config.json
-/workspaces/good-deeds/app/obj/Debug/net8.0/compressed/7n82l5oxm6-{0}-qxmzdzbsx2-qxmzdzbsx2.gz
-/workspaces/good-deeds/app/obj/Debug/net8.0/compressed/6kn7dxqbt2-{0}-28szsnubcs-28szsnubcs.gz
-/workspaces/good-deeds/app/obj/Debug/net8.0/compressed/9e6ghiqx7g-{0}-f0ajbtunv6-f0ajbtunv6.gz
+/workspaces/good-deeds/app/obj/Debug/net8.0/compressed/7n82l5oxm6-{0}-91jfjssdv8-91jfjssdv8.gz
+/workspaces/good-deeds/app/obj/Debug/net8.0/compressed/6kn7dxqbt2-{0}-kjaa9u08oy-kjaa9u08oy.gz
+/workspaces/good-deeds/app/obj/Debug/net8.0/compressed/9e6ghiqx7g-{0}-ua1ryajcs1-ua1ryajcs1.gz

@@ -18,20 +18,18 @@
 .navbar-brand[b-bnfq9be44y] {
     font-size: 1.05rem;
     letter-spacing: 0.04em;
+    color: #fff !important;
 }
 
 .navbar-nav .nav-link[b-bnfq9be44y] {
     margin-inline: 0.25rem;
     border-radius: 999px;
     transition: background-color 0.2s ease, color 0.2s ease;
+    color: rgba(255, 255, 255, 0.9) !important;
 }
 
 .navbar-nav .nav-link.active[b-bnfq9be44y],
 .navbar-nav .nav-link:hover[b-bnfq9be44y] {
     background-color: rgba(255, 255, 255, 0.18);
-    color: #fff;
-}
-
-.navbar-nav .nav-link[b-bnfq9be44y] {
-    color: rgba(255, 255, 255, 0.8);
+    color: #fff !important;
 }
