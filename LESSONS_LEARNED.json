@@ -1,0 +1,278 @@
+{
+  "project": "Good Deeds Tracker - Blazor WASM + Azure Functions + PostgreSQL",
+  "dateCreated": "2025-12-22",
+  "purpose": "Critical lessons learned to avoid repeating debugging pain in future AI-assisted development",
+  "lessonsLearned": [
+    {
+      "category": "PostgreSQL + Dapper Integration",
+      "severity": "CRITICAL",
+      "lessons": [
+        {
+          "issue": "PostgreSQL converts unquoted column aliases to lowercase",
+          "symptom": "Dapper throws 'A parameterless default constructor or one matching signature (System.Guid childid, System.Int64 points...) is required'",
+          "solution": "ALWAYS use quoted identifiers in SQL column aliases: `SELECT id as \"Id\"` NOT `SELECT id as Id`",
+          "example": {
+            "wrong": "SELECT child_id as ChildId, parent_id as ParentId FROM children",
+            "correct": "SELECT child_id as \"ChildId\", parent_id as \"ParentId\" FROM children"
+          },
+          "rule": "Every SELECT/RETURNING clause must use quoted aliases matching DTO PascalCase property names exactly"
+        },
+        {
+          "issue": "PostgreSQL aggregate functions return different types than expected",
+          "symptom": "sum() returns bigint (Int64) when DTO expects int (Int32)",
+          "solution": "Explicitly cast aggregate results: `sum(points)::integer` or `CAST(sum(points) AS INTEGER)`",
+          "example": {
+            "wrong": "SELECT sum(points) as \"Points\" FROM deeds",
+            "correct": "SELECT sum(points)::integer as \"Points\" FROM deeds"
+          },
+          "rule": "Always cast PostgreSQL aggregates (sum, count, avg) to match target DTO types"
+        },
+        {
+          "issue": "COALESCE with mismatched types causes cast errors",
+          "symptom": "Cannot cast NULL to integer",
+          "solution": "Cast COALESCE result: `COALESCE(sum(points), 0)::integer`",
+          "example": {
+            "wrong": "COALESCE(sum(points), 0) as \"Points\"",
+            "correct": "COALESCE(sum(points), 0)::integer as \"Points\""
+          },
+          "rule": "When using COALESCE with aggregates, cast the entire expression"
+        }
+      ]
+    },
+    {
+      "category": "Database Connection Strings",
+      "severity": "HIGH",
+      "lessons": [
+        {
+          "issue": "Neon PostgreSQL includes unsupported connection string parameters",
+          "symptom": "Connection fails with 'channel_binding parameter not supported'",
+          "solution": "Filter connection string parameters before passing to Npgsql",
+          "example": {
+            "unsupportedParams": ["channel_binding"],
+            "implementation": "Remove parameters from parsed connection string in ConnectionStringHelper"
+          },
+          "rule": "Always validate and sanitize third-party database connection strings before using with Npgsql"
+        },
+        {
+          "issue": "postgresql:// URI format vs. Npgsql connection string format",
+          "symptom": "Connection string parsing errors",
+          "solution": "Convert postgresql:// URIs to Npgsql format using NpgsqlConnectionStringBuilder",
+          "rule": "Use ConnectionStringHelper pattern for any cloud database provider"
+        },
+        {
+          "issue": "Environment variable naming is case-sensitive on Linux",
+          "symptom": "DB environment variable not found, gets null",
+          "solution": "Document exact case-sensitive variable name (e.g., 'DB' not 'db' or 'Db')",
+          "rule": "Always specify exact environment variable casing in deployment documentation"
+        }
+      ]
+    },
+    {
+      "category": "Error Handling & Logging",
+      "severity": "HIGH",
+      "lessons": [
+        {
+          "issue": "Silent catch blocks hide critical errors",
+          "symptom": "UI shows 'no data' but actual error is database connection failure",
+          "solution": "Always log exceptions even in catch blocks; never use empty `catch {}`",
+          "example": {
+            "wrong": "catch { }",
+            "better": "catch (Exception ex) { _feedback = ex.Message; }",
+            "best": "catch (Exception ex) { Console.WriteLine($\"Error: {ex.Message}\"); _feedback = ex.Message; }"
+          },
+          "rule": "Every catch block must at minimum log to console and display user-friendly message"
+        },
+        {
+          "issue": "Startup errors are invisible in deployed environments",
+          "symptom": "API returns 502 with no explanation",
+          "solution": "Wrap Program.cs migrations and startup code in try-catch with detailed logging",
+          "rule": "Add comprehensive error logging to all startup/initialization code before deployment"
+        },
+        {
+          "issue": "Generic error messages hide root cause",
+          "symptom": "'Unable to create child' doesn't indicate SQL deserialization error",
+          "solution": "Return actual exception messages during development, sanitize for production",
+          "rule": "During development, expose full error details; use feature flags for production"
+        }
+      ]
+    },
+    {
+      "category": "Blazor WASM Specific",
+      "severity": "MEDIUM",
+      "lessons": [
+        {
+          "issue": "Relative API URLs fail without base address",
+          "symptom": "Uri.IsWellFormedUriString() returns false for '/api/' causing silent failure",
+          "solution": "Check if URI is relative, then construct against HostEnvironment.BaseAddress",
+          "example": {
+            "wrong": "new Uri(apiBase)",
+            "correct": "Uri.IsWellFormedUriString(apiBase, UriKind.Absolute) ? new Uri(apiBase) : new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBase)"
+          },
+          "rule": "Always handle both absolute and relative URIs in configuration"
+        },
+        {
+          "issue": "CSS specificity conflicts with Bootstrap defaults",
+          "symptom": "Navigation text invisible because Bootstrap styles override custom CSS",
+          "solution": "Use !important flag judiciously for critical UI elements",
+          "example": {
+            "wrong": ".nav-link { color: white; }",
+            "correct": ".nav-link { color: rgba(255, 255, 255, 0.9) !important; }"
+          },
+          "rule": "When custom styles conflict with framework defaults, use !important with scoped CSS"
+        },
+        {
+          "issue": "Component state not refreshing after async operations",
+          "symptom": "Dropdown appears empty after data loads",
+          "solution": "Ensure StateHasChanged() or re-render triggers after async data loads",
+          "rule": "Always call StateHasChanged() after async data modifications if UI doesn't auto-update"
+        }
+      ]
+    },
+    {
+      "category": "Azure Static Web Apps Deployment",
+      "severity": "MEDIUM",
+      "lessons": [
+        {
+          "issue": "Environment variables must be set in Azure portal",
+          "symptom": "API works locally but fails in production with connection errors",
+          "solution": "Configure all environment variables in Static Web Apps → Settings → Environment variables",
+          "rule": "Never assume local.settings.json values carry over to production"
+        },
+        {
+          "issue": "Migration files must be included in deployment",
+          "symptom": "Database schema missing in production",
+          "solution": "Ensure sql/*.sql files are copied to output directory in .csproj",
+          "rule": "Add ItemGroup with CopyToOutputDirectory for migration files"
+        },
+        {
+          "issue": "Deployment takes 3+ minutes with caching",
+          "symptom": "Changes don't appear immediately",
+          "solution": "Wait for GitHub Actions to complete and Static Web App to refresh cache",
+          "rule": "Allow 3-5 minutes for full deployment cycle; check GitHub Actions status"
+        }
+      ]
+    },
+    {
+      "category": "API Design & Data Consistency",
+      "severity": "MEDIUM",
+      "lessons": [
+        {
+          "issue": "Inconsistent parent ID sources cause data loading failures",
+          "symptom": "Deed types dropdown empty because using child.ParentId instead of cached parentId",
+          "solution": "Always use consistent parent ID source (from user settings cache)",
+          "example": {
+            "wrong": "await ApiClient.GetDeedTypesAsync(_child.ParentId)",
+            "correct": "await ApiClient.GetDeedTypesAsync(parentId)"
+          },
+          "rule": "Establish single source of truth for user/parent context across all pages"
+        },
+        {
+          "issue": "404 responses treated as errors instead of empty lists",
+          "symptom": "Error messages when no data exists yet",
+          "solution": "Return empty lists for 404 responses, only throw for actual errors",
+          "example": {
+            "pattern": "if (response.StatusCode == HttpStatusCode.NotFound) return new List<T>();"
+          },
+          "rule": "Distinguish between 'no data' (404) and 'error fetching data' (500)"
+        }
+      ]
+    },
+    {
+      "category": "Testing & Validation",
+      "severity": "HIGH",
+      "lessons": [
+        {
+          "issue": "No systematic testing of CRUD operations",
+          "symptom": "Bugs discovered manually through UI testing",
+          "solution": "Create test scripts (like test-api.py) for programmatic endpoint validation",
+          "rule": "Build API test suite before deploying to production"
+        },
+        {
+          "issue": "SQL queries not tested against actual PostgreSQL before deployment",
+          "symptom": "Query works in SQL editor but fails with Dapper",
+          "solution": "Test all queries with Dapper locally using actual PostgreSQL database",
+          "rule": "Always test ORM queries against target database engine, not just SQL syntax"
+        }
+      ]
+    },
+    {
+      "category": "Documentation Requirements",
+      "severity": "MEDIUM",
+      "lessons": [
+        {
+          "issue": "Missing documentation of case-sensitive requirements",
+          "symptom": "Repeated issues with environment variables and SQL aliases",
+          "solution": "Create CRITICAL_GOTCHAS.md with PostgreSQL-specific requirements",
+          "rule": "Document platform-specific quirks prominently in project README"
+        },
+        {
+          "issue": "No deployment checklist",
+          "symptom": "Forgot to set environment variables during deployment",
+          "solution": "Maintain deployment checklist with all required configuration",
+          "rule": "Create deployment runbook before first production deploy"
+        }
+      ]
+    }
+  ],
+  "criticalRules": [
+    "ALWAYS use quoted identifiers for PostgreSQL column aliases in SELECT/RETURNING: as \"PropertyName\"",
+    "ALWAYS cast PostgreSQL aggregates to match DTO types: sum(x)::integer",
+    "ALWAYS handle both absolute and relative URIs in configuration",
+    "ALWAYS log exceptions in catch blocks, even if displaying user-friendly message",
+    "ALWAYS validate cloud database connection strings and remove unsupported parameters",
+    "ALWAYS use consistent data source (e.g., cached parentId) across all API calls",
+    "ALWAYS test Dapper queries against actual PostgreSQL database before deployment",
+    "ALWAYS document environment variable names with exact casing",
+    "ALWAYS include migration files in deployment output",
+    "NEVER use empty catch blocks or silent error swallowing",
+    "NEVER assume local configuration carries over to production",
+    "NEVER skip error handling in startup/initialization code"
+  ],
+  "quickReferenceChecklist": {
+    "beforeWritingSQLQuery": [
+      "Use quoted aliases: as \"PropertyName\"",
+      "Cast aggregates: sum(x)::integer",
+      "Match DTO property names exactly (PascalCase)",
+      "Test with Dapper locally first"
+    ],
+    "beforeDeployment": [
+      "Set all environment variables in Azure portal (case-sensitive)",
+      "Verify migration files copy to output directory",
+      "Test all CRUD operations programmatically",
+      "Check GitHub Actions completes successfully",
+      "Wait 3-5 minutes for deployment + cache refresh"
+    ],
+    "whenDebuggingErrors": [
+      "Check browser console for JavaScript errors",
+      "Check Azure Functions logs for startup errors",
+      "Verify environment variables set correctly (exact case)",
+      "Test database connection string separately",
+      "Add logging to catch blocks",
+      "Check for silent catch {} blocks hiding errors"
+    ]
+  },
+  "toolsAndPatterns": {
+    "essentialHelpers": [
+      "ConnectionStringHelper.cs - Sanitize database connection strings",
+      "ParentGuard.cs - Enforce request scoping and authorization",
+      "test-api.py - Programmatic API endpoint validation"
+    ],
+    "recommendedStructure": [
+      "Single Data.cs file for all database operations",
+      "File-based migrations with version tracking",
+      "Startup error logging in Program.cs",
+      "Consistent error response format: { error: 'message' }"
+    ]
+  },
+  "aiPromptGuidelines": {
+    "instruction": "When starting a new project with similar stack, provide this JSON to the AI with:",
+    "prompt": "I'm building a Blazor WASM + Azure Functions + PostgreSQL app. Here are critical lessons learned from a previous project. Please review these lessons and proactively apply them to avoid the same issues. Pay special attention to PostgreSQL case sensitivity with Dapper, error handling patterns, and deployment configuration.",
+    "emphasis": [
+      "Quote all PostgreSQL column aliases",
+      "Cast all aggregates to target types",
+      "Add comprehensive error logging before deployment",
+      "Test connection strings early",
+      "Document environment variables with exact casing"
+    ]
+  }
+}
