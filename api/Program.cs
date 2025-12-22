@@ -32,8 +32,17 @@ if (string.IsNullOrWhiteSpace(dbOptions.ConnectionString))
 }
 else
 {
-    var sqlFolder = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty, "sql");
-    await Migrations.ApplyAsync(dbOptions.ConnectionString, sqlFolder, logger);
+    try
+    {
+        var sqlFolder = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty, "sql");
+        await Migrations.ApplyAsync(dbOptions.ConnectionString, sqlFolder, logger);
+        logger.LogInformation("Database initialized successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to apply migrations: {Message}. Stack: {StackTrace}", ex.Message, ex.StackTrace);
+        throw;
+    }
 }
 
 host.Run();

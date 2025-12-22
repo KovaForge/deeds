@@ -31,42 +31,53 @@ public static class Migrations
             return;
         }
 
-        await using var db = new NpgsqlConnection(connectionString);
-        await db.OpenAsync();
-
-        await using var tx = await db.BeginTransactionAsync();
-        await db.ExecuteAsync("create table if not exists schema_migrations(version text primary key, applied_at timestamptz not null default now());", transaction: tx);
-
-        var applied = (await db.QueryAsync<string>("select version from schema_migrations", transaction: tx))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var file in files)
+        try
         {
-            var version = Path.GetFileName(file);
-            if (string.IsNullOrWhiteSpace(version))
+            await using var db = new NpgsqlConnection(connectionString);
+            logger.LogInformation("Opening database connection...");
+            await db.OpenAsync();
+            logger.LogInformation("Database connection opened successfully.");
+
+            await using var tx = await db.BeginTransactionAsync();
+            await db.ExecuteAsync("create table if not exists schema_migrations(version text primary key, applied_at timestamptz not null default now());", transaction: tx);
+
+            var applied = (await db.QueryAsync<string>("select version from schema_migrations", transaction: tx))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var file in files)
             {
-                continue;
+                var version = Path.GetFileName(file);
+                if (string.IsNullOrWhiteSpace(version))
+                {
+                    continue;
+                }
+
+                if (applied.Contains(version))
+                {
+                    logger.LogInformation("Migration {Version} already applied; skipping.", version);
+                    continue;
+                }
+
+                var sql = await File.ReadAllTextAsync(file);
+                if (string.IsNullOrWhiteSpace(sql))
+                {
+                    logger.LogWarning("Migration {Version} is empty; skipping.", version);
+                    continue;
+                }
+
+                logger.LogInformation("Applying migration {Version}...", version);
+                await db.ExecuteAsync(sql, transaction: tx);
+                await db.ExecuteAsync("insert into schema_migrations(version) values(@Version);", new { Version = version }, transaction: tx);
+                logger.LogInformation("Migration {Version} applied successfully.", version);
             }
 
-            if (applied.Contains(version))
-            {
-                logger.LogInformation("Migration {Version} already applied; skipping.", version);
-                continue;
-            }
-
-            var sql = await File.ReadAllTextAsync(file);
-            if (string.IsNullOrWhiteSpace(sql))
-            {
-                logger.LogWarning("Migration {Version} is empty; skipping.", version);
-                continue;
-            }
-
-            logger.LogInformation("Applying migration {Version}...", version);
-            await db.ExecuteAsync(sql, transaction: tx);
-            await db.ExecuteAsync("insert into schema_migrations(version) values(@Version);", new { Version = version }, transaction: tx);
+            await tx.CommitAsync();
+            logger.LogInformation("Migrations applied successfully.");
         }
-
-        await tx.CommitAsync();
-        logger.LogInformation("Migrations applied successfully.");
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Database migration failed: {Message}", ex.Message);
+            throw;
+        }
     }
 }
