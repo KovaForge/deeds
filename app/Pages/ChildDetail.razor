@@ -50,13 +50,22 @@ else
                         <DataAnnotationsValidator />
                         <div class="mb-3">
                             <label class="form-label">Deed type</label>
-                            <select class="form-select" @onchange="OnDeedTypeChanged">
-                                <option value="">Select a deed type</option>
-                                @foreach (var deedType in _deedTypes)
-                                {
-                                    <option value="@deedType.Id" selected="@(deedType.Id == _form.DeedTypeId)">@deedType.Name (@(deedType.Points >= 0 ? "+" : string.Empty)@deedType.Points pts)</option>
-                                }
-                            </select>
+                            @if (_deedTypes.Count == 0)
+                            {
+                                <div class="alert alert-warning">
+                                    No deed types found. <a href="/deeds">Create deed types first</a>.
+                                </div>
+                            }
+                            else
+                            {
+                                <select class="form-select" @onchange="OnDeedTypeChanged">
+                                    <option value="">Select a deed type</option>
+                                    @foreach (var deedType in _deedTypes)
+                                    {
+                                        <option value="@deedType.Id" selected="@(deedType.Id == _form.DeedTypeId)">@deedType.Name (@(deedType.Points >= 0 ? "+" : string.Empty)@deedType.Points pts)</option>
+                                    }
+                                </select>
+                            }
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Condition or details</label>
@@ -164,6 +173,7 @@ else
         _feedback = null;
         _suggestionReason = null;
         _deeds.Clear();
+        _deedTypes.Clear();
 
         try
         {
@@ -176,8 +186,16 @@ else
 
             _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
             _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
-            _deedTypes.Clear();
-            _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
+            
+            try
+            {
+                _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
+            }
+            catch (Exception deedTypeEx)
+            {
+                Console.WriteLine($"Error loading deed types: {deedTypeEx.Message}");
+                _feedback = $"Could not load deed types: {deedTypeEx.Message}";
+            }
 
             if (_deedTypes.Count > 0 && _form.DeedTypeId == Guid.Empty)
             {
@@ -189,6 +207,7 @@ else
         catch (Exception ex)
         {
             _feedback = ex.Message;
+            Console.WriteLine($"Error in LoadAsync: {ex.Message}");
         }
         finally
         {
