@@ -61,14 +61,14 @@ create table if not exists redemptions(
 
   public static async Task<ParentDto?> GetParentById(string cs, Guid id)
   {
-    const string sql = "select id, email from parents where id = @Id";
+    const string sql = "select id as Id, email as Email from parents where id = @Id";
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<ParentDto>(sql, new { Id = id });
   }
 
   public static async Task<ParentDto?> GetParentByEmail(string cs, string email)
   {
-    const string sql = "select id, email from parents where email = @Email";
+    const string sql = "select id as Id, email as Email from parents where email = @Email";
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<ParentDto>(sql, new { Email = email });
   }
@@ -78,7 +78,7 @@ create table if not exists redemptions(
     const string sql = @"
 insert into parents(id, email)
 values(@Id, @Email)
-returning id, email;";
+returning id as Id, email as Email;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -87,7 +87,7 @@ returning id, email;";
 
   public static async Task<ChildDto?> GetChildById(string cs, Guid id)
   {
-    const string sql = "select id, parent_id, name, dollar_per_point from children where id = @Id";
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, dollar_per_point as DollarPerPoint from children where id = @Id";
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<ChildDto>(sql, new { Id = id });
   }
@@ -102,7 +102,7 @@ returning id, email;";
 
   public static async Task<IEnumerable<ChildDto>> GetChildrenForParent(string cs, Guid parentId)
   {
-    const string sql = "select id, parent_id, name, dollar_per_point from children where parent_id = @ParentId order by created_date";
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, dollar_per_point as DollarPerPoint from children where parent_id = @ParentId order by created_date";
     await using var db = Conn(cs);
     return await db.QueryAsync<ChildDto>(sql, new { ParentId = parentId });
   }
@@ -112,7 +112,7 @@ returning id, email;";
     const string sql = @"
 insert into children(id, parent_id, name, dollar_per_point)
 values(@Id, @ParentId, @Name, @DollarPerPoint)
-returning id, parent_id, name, dollar_per_point;";
+returning id as Id, parent_id as ParentId, name as Name, dollar_per_point as DollarPerPoint;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -145,21 +145,21 @@ returning id, parent_id, name, dollar_per_point;";
 
   public static async Task<DeedTypeDto?> GetDeedTypeById(string cs, Guid id)
   {
-    const string sql = "select id, parent_id, name, points, active from deed_types where id = @Id";
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, points as Points, active as Active from deed_types where id = @Id";
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<DeedTypeDto>(sql, new { Id = id });
   }
 
   public static async Task<IEnumerable<DeedTypeDto>> GetDeedTypesForParent(string cs, Guid parentId)
   {
-    const string sql = "select id, parent_id, name, points, active from deed_types where parent_id = @ParentId order by name";
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, points as Points, active as Active from deed_types where parent_id = @ParentId order by name";
     await using var db = Conn(cs);
     return await db.QueryAsync<DeedTypeDto>(sql, new { ParentId = parentId });
   }
 
   public static async Task<DeedTypeDto?> GetDeedTypeByName(string cs, Guid parentId, string name)
   {
-    const string sql = "select id, parent_id, name, points, active from deed_types where parent_id = @ParentId and lower(name) = lower(@Name)";
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, points as Points, active as Active from deed_types where parent_id = @ParentId and lower(name) = lower(@Name)";
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<DeedTypeDto>(sql, new { ParentId = parentId, Name = name });
   }
@@ -169,7 +169,7 @@ returning id, parent_id, name, dollar_per_point;";
     const string sql = @"
 insert into deed_types(id, parent_id, name, points, active)
 values(@Id, @ParentId, @Name, @Points, true)
-returning id, parent_id, name, points, active;";
+returning id as Id, parent_id as ParentId, name as Name, points as Points, active as Active;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -190,7 +190,7 @@ set name = @Name,
   points = @Points,
   active = @Active
 where id = @Id
-returning id, parent_id, name, points, active;";
+returning id as Id, parent_id as ParentId, name as Name, points as Points, active as Active;";
 
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<DeedTypeDto>(sql, new
@@ -215,7 +215,7 @@ returning id, parent_id, name, points, active;";
     const string sql = @"
 insert into deeds(id, child_id, deed_type_id, points, note, occurred_at, created_by)
 values(@Id, @ChildId, @DeedTypeId, @Points, @Note, @OccurredAt, @CreatedBy)
-returning id, child_id, deed_type_id, points, note, occurred_at, created_by;";
+returning id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by as CreatedBy;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -234,7 +234,7 @@ returning id, child_id, deed_type_id, points, note, occurred_at, created_by;";
   public static async Task<IEnumerable<DeedDto>> GetDeedsForChild(string cs, Guid childId)
   {
     const string sql = @"
-select id, child_id, deed_type_id, points, note, occurred_at, created_by
+select id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by as CreatedBy
 from deeds
 where child_id = @ChildId
 order by occurred_at desc;";
@@ -246,7 +246,7 @@ order by occurred_at desc;";
   public static async Task<DeedDto?> GetDeedById(string cs, Guid deedId)
   {
     const string sql = @"
-select id, child_id, deed_type_id, points, note, occurred_at, created_by
+select id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by as CreatedBy
 from deeds where id = @Id";
 
     await using var db = Conn(cs);
@@ -285,7 +285,7 @@ where d.id = @Id";
     const string sql = @"
 insert into redemptions(id, child_id, points, description, created_at, created_by)
 values(@Id, @ChildId, @Points, @Description, @CreatedAt, @CreatedBy)
-returning id, child_id, points, description, created_at, created_by;";
+returning id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by as CreatedBy;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -303,7 +303,7 @@ returning id, child_id, points, description, created_at, created_by;";
   public static async Task<IEnumerable<RedemptionDto>> GetRedemptionsForChild(string cs, Guid childId)
   {
     const string sql = @"
-select id, child_id, points, description, created_at, created_by
+select id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by as CreatedBy
 from redemptions
 where child_id = @ChildId
 order by created_at desc;";
