@@ -4,6 +4,7 @@
 @inject AuthService Auth
 @inject UserSettingsService Settings
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -169,6 +170,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Auth.UserChanged += OnAuthChanged;
         _authUser = await Auth.GetUserAsync();
         _parentId = await ResolveParentIdAsync();
         await LoadDashboardAsync();
@@ -176,7 +178,7 @@
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		if (!firstRender || _authRefreshed || _authUser is not null)
+		if (!firstRender || _authRefreshed)
 		{
 			return;
 		}
@@ -185,8 +187,8 @@
 		await RefreshAuthAsync();
 	}
 
-	private async Task RefreshAuthAsync()
-	{
+    private async Task RefreshAuthAsync()
+    {
         Auth.ClearCache();
         var latest = await Auth.GetUserAsync();
         if (!Equals(latest, _authUser))
@@ -202,6 +204,15 @@
             await LoadDashboardAsync();
             StateHasChanged();
         }
+    }
+
+    private void OnAuthChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _authUser = await Auth.GetUserAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task LoadDashboardAsync()
@@ -332,4 +343,9 @@
 			return relative.StartsWith('/') ? relative : $"/{relative}";
 		}
 	}
+
+    public void Dispose()
+    {
+        Auth.UserChanged -= OnAuthChanged;
+    }
 }
