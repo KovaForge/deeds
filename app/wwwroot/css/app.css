@@ -1,5 +1,7 @@
 html, body {
     font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--page-bg);
+    min-height: 100%;
 }
 
 :root {
@@ -28,6 +30,11 @@ body {
         var(--page-bg);
     color: var(--page-text);
     min-height: 100vh;
+}
+
+#app {
+    min-height: 100vh;
+    background: var(--page-bg);
 }
 
 h1:focus {
@@ -113,6 +120,7 @@ a, .btn-link {
     grid-template-columns: 240px minmax(0, 1fr) !important;
     min-height: 100vh;
     align-items: start;
+    background: var(--page-bg);
 }
 
 .sidebar {
