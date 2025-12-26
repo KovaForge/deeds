@@ -37,6 +37,10 @@ body {
     background: var(--page-bg);
 }
 
+[class*="b-"] {
+    background-color: var(--page-bg);
+}
+
 h1:focus {
     outline: none;
 }

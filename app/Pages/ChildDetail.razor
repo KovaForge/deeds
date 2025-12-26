@@ -111,6 +111,10 @@
                 <div class="card card-elevated">
                     <div class="card-body">
                         <h5 class="card-title">Deed history</h5>
+                        @if (_deedsLoadError)
+                        {
+                            <div class="alert alert-warning">Unable to load deeds. @_deedsLoadErrorMessage</div>
+                        }
                         @if (_deeds.Count == 0)
                         {
                             <p class="text-muted mb-0">No deeds logged yet. Add one using the form.</p>
@@ -168,6 +172,8 @@
     private bool _dataRefreshAttempted;
     private bool _linkRequired;
     private bool _autoLinkAttempted;
+    private bool _deedsLoadError;
+    private string? _deedsLoadErrorMessage;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -214,6 +220,8 @@
         _isLoading = true;
         _feedback = null;
         _suggestionReason = null;
+        _deedsLoadError = false;
+        _deedsLoadErrorMessage = null;
         _deeds.Clear();
         _deedTypes.Clear();
 
@@ -226,8 +234,14 @@
                 return;
             }
 
-            _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
-            _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
+            try
+            {
+                _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
+            }
+            catch (Exception balanceEx)
+            {
+                Console.WriteLine($"Error loading balance: {balanceEx.Message}");
+            }
 
             try
             {
@@ -248,6 +262,17 @@
             else if (_deedTypes.Count == 0 && _linkRequired)
             {
                 _feedback = "Your Microsoft sign-in doesn't match the saved parent account. Link your existing parent email in Settings to access deed types.";
+            }
+
+            try
+            {
+                _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
+            }
+            catch (Exception deedEx)
+            {
+                _deedsLoadError = true;
+                _deedsLoadErrorMessage = deedEx.Message;
+                Console.WriteLine($"Error loading deeds: {deedEx.Message}");
             }
         }
         catch (Exception ex)
