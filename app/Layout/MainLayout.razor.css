@@ -1,11 +1,13 @@
-.app-shell {
+.layout-shell {
     min-height: 100vh;
     display: grid;
     grid-template-columns: 240px minmax(0, 1fr);
     background: var(--page-bg);
+    align-items: start;
 }
 
 .content {
     min-width: 0;
     padding: 28px 32px;
+    background: var(--page-bg);
 }

@@ -98,6 +98,7 @@ a, .btn-link {
 .content {
     padding: 28px 32px;
     min-width: 0;
+    background: var(--page-bg);
 }
 
 .app-shell {
@@ -105,6 +106,13 @@ a, .btn-link {
     grid-template-columns: 240px minmax(0, 1fr);
     min-height: 100vh;
     background: var(--page-bg);
+}
+
+.layout-shell {
+    display: grid !important;
+    grid-template-columns: 240px minmax(0, 1fr) !important;
+    min-height: 100vh;
+    align-items: start;
 }
 
 .sidebar {
