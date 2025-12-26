@@ -53,16 +53,23 @@
                                 <label class="form-label">Deed type</label>
                                 @if (_deedTypes.Count == 0)
                                 {
-                                    <div class="alert alert-warning">
-                                        @if (_linkRequired)
-                                        {
-                                            <span>Your Microsoft sign-in is linked to a different parent. Link your legacy email in <a href="/settings">Settings</a> to load existing deed types.</span>
-                                        }
-                                        else
-                                        {
-                                            <span>No deed types available yet. Add them in <a href="/deeds">Deed Types</a>.</span>
-                                        }
-                                    </div>
+                                    @if (_deedTypesLoading)
+                                    {
+                                        <div class="text-muted small">Loading deed types...</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            @if (_linkRequired)
+                                            {
+                                                <span>Your Microsoft sign-in is linked to a different parent. Link your legacy email in <a href="/settings">Settings</a> to load existing deed types.</span>
+                                            }
+                                            else
+                                            {
+                                                <span>No deed types available yet. Add them in <a href="/deeds">Deed Types</a>.</span>
+                                            }
+                                        </div>
+                                    }
                                 }
                                 else
                                 {
