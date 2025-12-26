@@ -249,7 +249,8 @@ public class ApiClient
         }
 
         var error = await ReadErrorAsync(response);
-        throw new InvalidOperationException(error ?? "Unable to create deed");
+        var message = error ?? $"Unable to create deed (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
     }
 
     public async Task<IReadOnlyList<DeedDto>> GetDeedsForChildAsync(Guid childId, Guid parentId)

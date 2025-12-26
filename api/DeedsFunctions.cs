@@ -48,13 +48,13 @@ public class DeedsFunctions
         var child = await Data.GetChildById(_cs, payload.ChildId);
         if (child is null || child.ParentId != parentId)
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
+            return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Child not found for this parent");
         }
 
         var deedType = await Data.GetDeedTypeById(_cs, payload.DeedTypeId);
         if (deedType is null || deedType.ParentId != parentId)
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
+            return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Deed type not found for this parent");
         }
 
         if (!deedType.Active)

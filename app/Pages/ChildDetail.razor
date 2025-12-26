@@ -356,23 +356,30 @@
 
     private async Task CreateDeedAsync()
     {
-        if (_parentId is null || _form.DeedTypeId == Guid.Empty)
+        if (_form.DeedTypeId == Guid.Empty)
         {
             _feedback = "Select a deed type first.";
             return;
         }
 
+        var resolvedParent = await ResolveParentIdAsync();
+        if (resolvedParent is null)
+        {
+            _feedback = "Configure your parent account in Settings first.";
+            return;
+        }
+
+        _parentId = resolvedParent;
         _isSubmitting = true;
         _feedback = null;
+        string? note = _form.Condition;
+        if (!string.IsNullOrWhiteSpace(_form.Note))
+        {
+            note = $"{_form.Condition}\n\n{_form.Note.Trim()}";
+        }
 
         try
         {
-            var note = _form.Condition;
-            if (!string.IsNullOrWhiteSpace(_form.Note))
-            {
-                note = $"{_form.Condition}\n\n{_form.Note.Trim()}";
-            }
-
             await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, ResolveCreatedBy());
             _form.Condition = string.Empty;
             _form.Note = string.Empty;
@@ -385,7 +392,30 @@
         }
         catch (Exception ex)
         {
-            _feedback = ex.Message;
+            var message = ex.Message;
+            if (message.Contains("ParentId", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var storedEmail = await Settings.GetParentEmailAsync();
+                    if (!string.IsNullOrWhiteSpace(storedEmail))
+                    {
+                        var linked = await ApiClient.LinkParentAsync(storedEmail);
+                        await Settings.SetParentIdAsync(linked.Id);
+                        await Settings.SetParentEmailAsync(linked.Email);
+                        _parentId = linked.Id;
+                        await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, ResolveCreatedBy());
+                        await LoadAsync();
+                        return;
+                    }
+                }
+                catch (Exception linkEx)
+                {
+                    message = linkEx.Message;
+                }
+            }
+
+            _feedback = message;
         }
         finally
         {
