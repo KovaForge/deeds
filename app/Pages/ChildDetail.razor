@@ -166,7 +166,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        _parentId = await Settings.GetParentIdAsync();
+        _parentId = await ResolveParentIdAsync();
         if (_parentId is null)
         {
             _isLoading = false;
@@ -249,11 +249,35 @@ else
     {
         Auth.ClearCache();
         _authUser = await Auth.GetUserAsync();
-        var latestParent = await Settings.GetParentIdAsync();
-        if (latestParent != _parentId)
+        _parentId = await ResolveParentIdAsync();
+    }
+
+    private async Task<Guid?> ResolveParentIdAsync()
+    {
+        var storedParent = await Settings.GetParentIdAsync();
+        if (_authUser is null)
         {
-            _parentId = latestParent;
+            return storedParent;
         }
+
+        try
+        {
+            var current = await ApiClient.GetCurrentParentAsync();
+            if (current is not null)
+            {
+                if (storedParent != current.Id)
+                {
+                    await Settings.SetParentIdAsync(current.Id);
+                }
+                return current.Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error resolving current parent: {ex.Message}");
+        }
+
+        return storedParent;
     }
 
     private async Task CreateDeedAsync()

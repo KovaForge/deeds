@@ -48,6 +48,24 @@ public class ApiClient
         return await _http.GetFromJsonAsync<ParentDto>($"parents/{parentId}");
     }
 
+    public async Task<ParentDto?> GetCurrentParentAsync()
+    {
+        var response = await _http.GetAsync("parents/me");
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<ParentDto>();
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to load current parent (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
     public async Task<IReadOnlyList<ChildDto>> GetChildrenAsync(Guid parentId)
     {
         var req = new HttpRequestMessage(HttpMethod.Get, $"parents/{parentId}/children");

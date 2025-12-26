@@ -97,6 +97,26 @@ public class ParentsFunctions
         return res;
     }
 
+    [Function("GetCurrentParent")]
+    public async Task<HttpResponseData> GetCurrentParent(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/me")] HttpRequestData req)
+    {
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var guardError))
+        {
+            return guardError!;
+        }
+
+        var parent = await Data.GetParentById(_cs, parentId);
+        if (parent is null)
+        {
+            return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        var res = req.CreateResponse(HttpStatusCode.OK);
+        await res.WriteAsJsonAsync(parent);
+        return res;
+    }
+
     [Function("FindParentByEmail")]
     public async Task<HttpResponseData> FindParentByEmail(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents")] HttpRequestData req)
