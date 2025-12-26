@@ -225,7 +225,11 @@
         try
         {
             var parentId = _parentId!.Value;
-            _child = await ApiClient.GetChildAsync(ChildId, parentId);
+            var childTask = ApiClient.GetChildAsync(ChildId, parentId);
+            var balanceTask = ApiClient.GetChildBalanceAsync(ChildId, parentId);
+            var deedsTask = ApiClient.GetDeedsForChildAsync(ChildId, parentId);
+
+            _child = await childTask;
             if (_child is null)
             {
                 return;
@@ -233,7 +237,7 @@
 
             try
             {
-                _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
+                _balance = await balanceTask;
             }
             catch (Exception balanceEx)
             {
@@ -242,7 +246,7 @@
 
             try
             {
-                _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
+                _deeds.AddRange(await deedsTask);
             }
             catch (Exception deedEx)
             {
