@@ -101,7 +101,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _parentId = await Settings.GetParentIdAsync();
+        _parentId = await ResolveParentIdAsync();
         if (_parentId is null)
         {
             _isLoading = false;
@@ -205,6 +205,29 @@
     {
         _showDeleteConfirm = false;
         _childIdPendingDelete = null;
+    }
+
+    private async Task<Guid?> ResolveParentIdAsync()
+    {
+        var storedParent = await Settings.GetParentIdAsync();
+        try
+        {
+            var current = await ApiClient.GetCurrentParentAsync();
+            if (current is not null)
+            {
+                if (!storedParent.HasValue)
+                {
+                    await Settings.SetParentIdAsync(current.Id);
+                }
+                return current.Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error resolving current parent: {ex.Message}");
+        }
+
+        return storedParent;
     }
 
     private sealed record ChildWithBalance(ChildDto Child, BalanceDto Balance);

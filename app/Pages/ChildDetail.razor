@@ -159,6 +159,7 @@
     private string? _suggestionReason;
     private bool _authRefreshed;
     private bool _dataRefreshAttempted;
+    private bool _linkRequired;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -236,6 +237,10 @@
                 _form.DeedTypeId = first.Id;
                 _form.Points = first.Points;
             }
+            else if (_deedTypes.Count == 0 && _linkRequired)
+            {
+                _feedback = "Your Microsoft sign-in doesn't match the saved parent account. Link your existing parent email in Settings to access deed types.";
+            }
         }
         catch (Exception ex)
         {
@@ -264,7 +269,8 @@
             var current = await ApiClient.GetCurrentParentAsync();
             if (current is not null)
             {
-                if (storedParent != current.Id)
+                _linkRequired = storedParent.HasValue && storedParent.Value != current.Id;
+                if (!storedParent.HasValue)
                 {
                     await Settings.SetParentIdAsync(current.Id);
                 }

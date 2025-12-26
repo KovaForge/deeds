@@ -295,7 +295,8 @@
             var current = await ApiClient.GetCurrentParentAsync();
             if (current is not null)
             {
-                if (storedParent != current.Id)
+                _linkRequired = storedParent.HasValue && storedParent.Value != current.Id;
+                if (!storedParent.HasValue)
                 {
                     await Settings.SetParentIdAsync(current.Id);
                 }

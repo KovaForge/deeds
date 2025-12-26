@@ -43,6 +43,14 @@
                     </div>
                 </div>
 
+                @if (_linkRequired)
+                {
+                    <div class="alert alert-warning mt-3">
+                        <div class="fw-semibold">Link your existing parent account</div>
+                        <div class="text-muted small">Your Microsoft sign-in is connected to a different parent than the one saved in this browser. Use the “Link existing account” section below to connect your legacy email and load existing children and deed types.</div>
+                    </div>
+                }
+
                 <EditForm Model="_parentForm" OnValidSubmit="SaveParentAsync">
                     <DataAnnotationsValidator />
                     <div class="mb-3">
@@ -142,6 +150,8 @@
 
     private AuthUser? _authUser;
     private ParentDto? _currentParent;
+    private ParentDto? _authParent;
+    private bool _linkRequired;
     private bool _hasStoredParent;
     private bool _savingParent;
     private bool _savingAiKey;
@@ -172,6 +182,20 @@
 
         if (_authUser is not null)
         {
+            try
+            {
+                _authParent = await ApiClient.GetCurrentParentAsync();
+            }
+            catch (Exception ex)
+            {
+                _parentFeedback = ex.Message;
+            }
+
+            if (_currentParent is not null && _authParent is not null && _currentParent.Id != _authParent.Id)
+            {
+                _linkRequired = true;
+            }
+
             await LoadAiKeyStatusAsync();
         }
     }
