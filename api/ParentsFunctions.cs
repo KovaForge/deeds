@@ -197,7 +197,7 @@ public class ParentsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Parent account not found for that email.");
         }
 
-        await Data.UpsertParentAuthLink(_cs, user.Provider, user.UserId, parent.Id, normalizedEmail);
+        await Data.UpsertParentAuthLink(_cs, user.Provider, user.UserId, parent.Id, normalizedEmail, null);
         var res = req.CreateResponse(HttpStatusCode.OK);
         await res.WriteAsJsonAsync(parent);
         return res;

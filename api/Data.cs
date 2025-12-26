@@ -1,12 +1,16 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using Dapper;
+using Microsoft.AspNetCore.WebUtilities;
 using Npgsql;
 
 public record DeedDetails(Guid Id, Guid ChildId, Guid ParentId);
 public record DeedTypeDetails(Guid Id, Guid ParentId);
 public record AiKeyRecord(string CipherText, string Nonce, string Tag);
-public record ParentAuthLink(Guid ParentId, string Provider, string UserId, string? Email);
+public record ParentAuthLink(Guid ParentId, string Provider, string UserId, string? Email, string? DisplayName);
+public record ParentInvite(Guid Id, Guid ParentId, string Email, string Token, DateTime ExpiresAtUtc, DateTime CreatedAtUtc, string? CreatedBy, DateTime? AcceptedAtUtc, DateTime? CancelledAtUtc);
+public record ParentInviteSummary(Guid Id, Guid ParentId, string Email, DateTime ExpiresAtUtc, DateTime CreatedAtUtc, string? CreatedBy);
 
 public static class Data
 {
@@ -72,10 +76,28 @@ create table if not exists parent_auth_links(
   user_id text not null,
   parent_id uuid not null references parents(id) on delete cascade,
   email text,
+  display_name text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key(provider, user_id)
-);";
+);
+
+alter table if exists parent_auth_links add column if not exists display_name text;
+
+create table if not exists parent_invites(
+  id uuid primary key,
+  parent_id uuid not null references parents(id) on delete cascade,
+  email text not null,
+  token text not null unique,
+  created_by text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  accepted_at timestamptz,
+  accepted_by text,
+  cancelled_at timestamptz
+);
+create index if not exists idx_parent_invites_parent on parent_invites(parent_id);
+create index if not exists idx_parent_invites_token on parent_invites(token);";
     await using var db = Conn(cs);
     await db.ExecuteAsync(sql);
   }
@@ -477,15 +499,16 @@ where provider = @Provider and user_id = @UserId;";
     return await db.QuerySingleOrDefaultAsync<Guid?>(sql, new { Provider = provider, UserId = userId });
   }
 
-  public static async Task UpsertParentAuthLink(string cs, string provider, string userId, Guid parentId, string? email)
+  public static async Task UpsertParentAuthLink(string cs, string provider, string userId, Guid parentId, string? email, string? displayName = null)
   {
     const string sql = @"
-insert into parent_auth_links(provider, user_id, parent_id, email)
-values(@Provider, @UserId, @ParentId, @Email)
+insert into parent_auth_links(provider, user_id, parent_id, email, display_name)
+values(@Provider, @UserId, @ParentId, @Email, @DisplayName)
 on conflict (provider, user_id)
 do update set
   parent_id = excluded.parent_id,
-  email = excluded.email,
+  email = coalesce(excluded.email, parent_auth_links.email),
+  display_name = coalesce(excluded.display_name, parent_auth_links.display_name),
   updated_at = now();";
 
     await using var db = Conn(cs);
@@ -494,8 +517,84 @@ do update set
       Provider = provider,
       UserId = userId,
       ParentId = parentId,
-      Email = email
+      Email = email,
+      DisplayName = displayName
     });
+  }
+
+  public static async Task<ProfileDto?> GetProfile(string cs, string provider, string userId)
+  {
+    const string sql = @"
+select email as Email, display_name as DisplayName
+from parent_auth_links
+where provider = @Provider and user_id = @UserId;";
+
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<ProfileDto>(sql, new { Provider = provider, UserId = userId });
+  }
+
+  public static async Task<ParentInvite> CreateParentInvite(string cs, Guid parentId, string email, DateTime expiresAtUtc, string? createdBy)
+  {
+    const string sql = @"
+insert into parent_invites(id, parent_id, email, token, created_by, expires_at)
+values(@Id, @ParentId, @Email, @Token, @CreatedBy, @ExpiresAtUtc)
+returning id as Id, parent_id as ParentId, email as Email, token as Token, expires_at as ExpiresAtUtc, created_at as CreatedAtUtc, created_by as CreatedBy, accepted_at as AcceptedAtUtc, cancelled_at as CancelledAtUtc;";
+
+    await using var db = Conn(cs);
+    var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+    var id = Guid.NewGuid();
+    return await db.QuerySingleAsync<ParentInvite>(sql, new
+    {
+      Id = id,
+      ParentId = parentId,
+      Email = email,
+      Token = token,
+      CreatedBy = createdBy,
+      ExpiresAtUtc = expiresAtUtc
+    });
+  }
+
+  public static async Task<IEnumerable<ParentInviteSummary>> ListPendingParentInvites(string cs, Guid parentId)
+  {
+    const string sql = @"
+select id as Id, parent_id as ParentId, email as Email, expires_at as ExpiresAtUtc, created_at as CreatedAtUtc, created_by as CreatedBy
+from parent_invites
+where parent_id = @ParentId
+  and cancelled_at is null
+  and accepted_at is null
+  and expires_at > now()
+order by created_at desc;";
+
+    await using var db = Conn(cs);
+    return await db.QueryAsync<ParentInviteSummary>(sql, new { ParentId = parentId });
+  }
+
+  public static async Task<bool> CancelParentInvite(string cs, Guid parentId, Guid inviteId)
+  {
+    const string sql = @"
+update parent_invites
+set cancelled_at = now()
+where id = @InviteId and parent_id = @ParentId and cancelled_at is null and accepted_at is null;";
+
+    await using var db = Conn(cs);
+    var affected = await db.ExecuteAsync(sql, new { InviteId = inviteId, ParentId = parentId });
+    return affected > 0;
+  }
+
+  public static async Task<(Guid ParentId, string Email)?> AcceptParentInvite(string cs, string token, string acceptedBy)
+  {
+    const string sql = @"
+update parent_invites
+set accepted_at = now(),
+  accepted_by = @AcceptedBy
+where token = @Token
+  and cancelled_at is null
+  and accepted_at is null
+  and expires_at > now()
+returning parent_id as ParentId, email as Email;";
+
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<(Guid ParentId, string Email)?>(sql, new { Token = token, AcceptedBy = acceptedBy });
   }
 
   public static string ToCsv(IEnumerable<ChildHistoryRow> rows)

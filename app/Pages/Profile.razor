@@ -1,0 +1,455 @@
+@page "/profile"
+
+@inject AuthService Auth
+@inject ApiClient ApiClient
+@inject UserSettingsService UserSettings
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+@using System
+@using System.Linq
+@using Microsoft.JSInterop
+@using GoodDeeds.Client.Models
+
+<PageTitle>Profile</PageTitle>
+
+<div class="page">
+    <h2 class="fw-bold mb-3">Profile</h2>
+    <p class="text-muted">Update your display name and share this Good Deeds account with another signed-in parent.</p>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <div class="card card-elevated">
+                <div class="card-body">
+                    <h5 class="card-title">Display name</h5>
+                    <p class="text-muted small">Shown in the sidebar instead of your email.</p>
+                    @if (_nameFeedback is not null)
+                    {
+                        <div class="alert alert-success">@_nameFeedback</div>
+                    }
+                    @if (_nameError is not null)
+                    {
+                        <div class="alert alert-danger">@_nameError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Display name</label>
+                        <input class="form-control" @bind="_displayName" />
+                        <div class="form-text">Pick something unique so your email isn't duplicated in the sidebar.</div>
+                    </div>
+                    <button class="btn btn-primary" type="button" @onclick="SaveDisplayNameAsync" disabled="@_savingName">
+                        @_savingName ? "Saving..." : "Save display name"
+                    </button>
+                </div>
+            </div>
+
+            <div class="card card-elevated mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Accept invite</h5>
+                    <p class="text-muted small">Paste a share token you received to link this browser to a parent account.</p>
+                    @if (_authUser is null)
+                    {
+                        <div class="alert alert-warning">Sign in with Microsoft before accepting an invite.</div>
+                    }
+                    @if (_acceptMessage is not null)
+                    {
+                        <div class="alert alert-success">@_acceptMessage</div>
+                    }
+                    @if (_acceptError is not null)
+                    {
+                        <div class="alert alert-danger">@_acceptError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Invite token</label>
+                        <input class="form-control" @bind="_acceptToken" placeholder="Paste token" />
+                        @if (_prefilledTokenMessage is not null)
+                        {
+                            <div class="form-text text-success">@_prefilledTokenMessage</div>
+                        }
+                    </div>
+                    <button class="btn btn-primary" type="button" @onclick="AcceptInviteAsync" disabled="@(_accepting || string.IsNullOrWhiteSpace(_acceptToken) || _authUser is null)">
+                        @_accepting ? "Linking..." : "Accept invite"
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card card-elevated">
+                <div class="card-body">
+                    <h5 class="card-title">Share access</h5>
+                    <p class="text-muted small">Generate a one-time link for a second parent to sign in and join your account.</p>
+                    @if (_inviteMessage is not null)
+                    {
+                        <div class="alert alert-success">@_inviteMessage</div>
+                    }
+                    @if (_inviteError is not null)
+                    {
+                        <div class="alert alert-danger">@_inviteError</div>
+                    }
+
+                    @if (_parentId is null)
+                    {
+                        <div class="alert alert-warning mb-0">Link or create a parent in Settings before sharing.</div>
+                    }
+                    else
+                    {
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-7">
+                                <label class="form-label">Invite email</label>
+                                <input class="form-control" type="email" placeholder="friend@example.com" @bind="_inviteEmail" />
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Valid (days)</label>
+                                <input class="form-control" type="number" min="1" max="30" @bind="_inviteDays" />
+                            </div>
+                            <div class="col-12 col-md-2 d-grid">
+                                <button class="btn btn-primary" type="button" @onclick="CreateInviteAsync" disabled="@(_inviteLoading || string.IsNullOrWhiteSpace(_inviteEmail))">
+                                    @_inviteLoading ? "Working..." : "Share"
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (_inviteLink is not null)
+                        {
+                            <div class="alert alert-info mt-3">
+                                <div class="fw-semibold">Share this link</div>
+                                <div class="d-flex flex-column gap-2 mt-2">
+                                    <input class="form-control" value="@_inviteLink" readonly onfocus="this.select()" />
+                                    <button class="btn btn-outline-secondary btn-sm align-self-start" type="button" @onclick="CopyInviteAsync">Copy link</button>
+                                    @if (!string.IsNullOrWhiteSpace(_inviteToken))
+                                    {
+                                        <div class="small text-muted">Token: @_inviteToken</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div class="card card-elevated mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Pending invites</h5>
+                    @if (_parentId is null)
+                    {
+                        <p class="text-muted mb-0">Link a parent to view existing invites.</p>
+                    }
+                    else if (_loadingInvites)
+                    {
+                        <p class="text-muted mb-0">Loading...</p>
+                    }
+                    else if (_pendingInvites.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No pending invites.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Expires</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var invite in _pendingInvites)
+                                    {
+                                        <tr>
+                                            <td>@invite.Email</td>
+                                            <td class="text-muted">@invite.ExpiresAtUtc.ToLocalTime().ToString("g")</td>
+                                            <td>
+                                                <button class="btn btn-outline-danger btn-sm" type="button" @onclick="() => CancelInviteAsync(invite.Id)">Cancel</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private AuthUser? _authUser;
+    private Guid? _parentId;
+    private string? _parentEmail;
+
+    private string _displayName = string.Empty;
+    private bool _savingName;
+    private string? _nameFeedback;
+    private string? _nameError;
+
+    private string _inviteEmail = string.Empty;
+    private int _inviteDays = 7;
+    private string? _inviteMessage;
+    private string? _inviteError;
+    private string? _inviteLink;
+    private string? _inviteToken;
+    private bool _inviteLoading;
+    private bool _loadingInvites;
+    private List<ParentInviteDto> _pendingInvites = new();
+
+    private string _acceptToken = string.Empty;
+    private string? _acceptMessage;
+    private string? _acceptError;
+    private string? _prefilledTokenMessage;
+    private bool _accepting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authUser = await Auth.GetUserAsync();
+        _parentId = await UserSettings.GetParentIdAsync();
+        _parentEmail = await UserSettings.GetParentEmailAsync();
+        await LoadProfileAsync();
+        PrefillInviteToken();
+        await LoadInvitesAsync();
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        try
+        {
+            var profile = await ApiClient.GetProfileAsync();
+            _displayName = profile?.DisplayName ?? _authUser?.DisplayName ?? _authUser?.Email ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _displayName = _authUser?.DisplayName ?? _authUser?.Email ?? string.Empty;
+            _nameError = ex.Message;
+        }
+    }
+
+    private async Task SaveDisplayNameAsync()
+    {
+        _nameError = null;
+        _nameFeedback = null;
+
+        var trimmed = _displayName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            _nameError = "Display name is required.";
+            return;
+        }
+
+        _savingName = true;
+        try
+        {
+            var result = await ApiClient.UpdateProfileAsync(trimmed);
+            _displayName = result.DisplayName ?? trimmed;
+            _authUser = _authUser is null ? null : _authUser with { DisplayName = _displayName };
+            Auth.UpdateCachedDisplayName(_displayName);
+            _nameFeedback = "Display name updated.";
+        }
+        catch (Exception ex)
+        {
+            _nameError = ex.Message;
+        }
+        finally
+        {
+            _savingName = false;
+        }
+    }
+
+    private void PrefillInviteToken()
+    {
+        try
+        {
+            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+            var rawQuery = uri.Query;
+            if (string.IsNullOrWhiteSpace(rawQuery))
+            {
+                return;
+            }
+
+            var pairs = rawQuery.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pair in pairs)
+            {
+                var kvp = pair.Split('=', 2);
+                if (kvp.Length != 2)
+                {
+                    continue;
+                }
+
+                if (string.Equals(kvp[0], "inviteToken", StringComparison.OrdinalIgnoreCase))
+                {
+                    var token = Uri.UnescapeDataString(kvp[1]);
+                    if (string.IsNullOrWhiteSpace(token))
+                    {
+                        continue;
+                    }
+
+                    _acceptToken = token;
+                    _prefilledTokenMessage = "Invite token prefilled from shared link.";
+                    var clean = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0];
+                    Navigation.NavigateTo("/" + clean, replace: true);
+                    break;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore parsing errors; user can still paste manually.
+        }
+    }
+
+    private async Task CreateInviteAsync()
+    {
+        if (_parentId is null)
+        {
+            _inviteError = "Link or create a parent first.";
+            return;
+        }
+
+        if (_authUser is null)
+        {
+            _inviteError = "Sign in with Microsoft to create an invite.";
+            return;
+        }
+
+        _inviteError = null;
+        _inviteMessage = null;
+        _inviteLink = null;
+        _inviteToken = null;
+        _inviteLoading = true;
+
+        try
+        {
+            var created = await ApiClient.CreateParentInviteAsync(_parentId.Value, _inviteEmail.Trim(), _inviteDays);
+            _inviteToken = created.Token;
+            _inviteLink = BuildInviteLink(created.Token);
+            _inviteMessage = "Share this link with another parent so they can sign in and join your account.";
+            await LoadInvitesAsync();
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+        finally
+        {
+            _inviteLoading = false;
+        }
+    }
+
+    private string BuildInviteLink(string token)
+    {
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        return $"{baseUri}/profile?inviteToken={Uri.EscapeDataString(token)}";
+    }
+
+    private async Task CopyInviteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_inviteLink))
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _inviteLink);
+            _inviteMessage = "Link copied to clipboard.";
+        }
+        catch
+        {
+            _inviteMessage = "Copy failed. Select and copy the link manually.";
+        }
+    }
+
+    private async Task LoadInvitesAsync()
+    {
+        if (_authUser is null)
+        {
+            _pendingInvites.Clear();
+            return;
+        }
+
+        if (_parentId is null)
+        {
+            _pendingInvites.Clear();
+            return;
+        }
+
+        _loadingInvites = true;
+        try
+        {
+            var invites = await ApiClient.GetParentInvitesAsync(_parentId.Value);
+            _pendingInvites = invites.ToList();
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+        finally
+        {
+            _loadingInvites = false;
+        }
+    }
+
+    private async Task CancelInviteAsync(Guid inviteId)
+    {
+        if (_parentId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await ApiClient.CancelParentInviteAsync(_parentId.Value, inviteId);
+            await LoadInvitesAsync();
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+    }
+
+    private async Task AcceptInviteAsync()
+    {
+        _acceptError = null;
+        _acceptMessage = null;
+
+        if (_authUser is null)
+        {
+            _acceptError = "Sign in with Microsoft to accept invites.";
+            return;
+        }
+
+        var trimmed = _acceptToken?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            _acceptError = "Paste a valid token first.";
+            return;
+        }
+
+        _accepting = true;
+        try
+        {
+            var result = await ApiClient.AcceptInviteAsync(trimmed);
+            if (result is not null)
+            {
+                _acceptMessage = "Invite accepted. Your browser is now linked to that parent account.";
+                _parentId = result.ParentId;
+                _prefilledTokenMessage = null;
+                _acceptToken = string.Empty;
+                await UserSettings.SetParentIdAsync(result.ParentId);
+                if (!string.IsNullOrWhiteSpace(result.Email))
+                {
+                    await UserSettings.SetParentEmailAsync(result.Email);
+                }
+                await LoadInvitesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _acceptError = ex.Message;
+        }
+        finally
+        {
+            _accepting = false;
+        }
+    }
+
+}

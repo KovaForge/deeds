@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http.Json;
 using System.Linq;
 
@@ -6,12 +7,16 @@ namespace GoodDeeds.Client.Services;
 public sealed class AuthService
 {
     private readonly HttpClient _http;
+    private readonly ApiClient _apiClient;
     private AuthUser? _cached;
     private bool _loaded;
 
-    public AuthService(HttpClient http)
+    public event Action? UserChanged;
+
+    public AuthService(HttpClient http, ApiClient apiClient)
     {
         _http = http;
+        _apiClient = apiClient;
     }
 
     public async Task<AuthUser?> GetUserAsync()
@@ -35,6 +40,19 @@ public sealed class AuthService
             var email = ResolveEmail(principal);
             var displayName = ResolveDisplayName(principal, email);
             _cached = new AuthUser(principal.IdentityProvider, principal.UserId, principal.UserDetails, email, displayName);
+            try
+            {
+                var profile = await _apiClient.GetProfileAsync();
+                if (profile?.DisplayName is not null && profile.DisplayName.Trim().Length > 0)
+                {
+                    _cached = _cached with { DisplayName = profile.DisplayName };
+                }
+            }
+            catch
+            {
+                // Ignore profile lookup failures to avoid breaking auth retrieval.
+            }
+            UserChanged?.Invoke();
             return _cached;
         }
         catch
@@ -47,6 +65,16 @@ public sealed class AuthService
     {
         _loaded = false;
         _cached = null;
+        UserChanged?.Invoke();
+    }
+
+    public void UpdateCachedDisplayName(string displayName)
+    {
+        if (_cached is not null)
+        {
+            _cached = _cached with { DisplayName = displayName };
+        }
+        UserChanged?.Invoke();
     }
 
     private static string? ResolveEmail(ClientPrincipal principal)
