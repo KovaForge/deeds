@@ -65,6 +65,29 @@
                                 <InputText class="form-control" @bind-Value="_form.Name" />
                             </div>
                             <div class="mb-3">
+                                <h6 class="mb-2">AI points suggestion</h6>
+                                <p class="text-muted small mb-2">Describe the situation to get a suggested point adjustment for this new deed.</p>
+                                <label class="form-label">Condition or details</label>
+                                <InputTextArea class="form-control" @bind-Value="_suggestCondition" rows="3" placeholder="Describe the specific incident" />
+                                <button class="btn btn-outline-secondary w-100 mt-3" type="button" @onclick="SuggestPointsAsync" disabled="@(_suggesting || string.IsNullOrWhiteSpace(_form.Name) || string.IsNullOrWhiteSpace(_suggestCondition))">
+                                    @(_suggesting ? "Contacting AI..." : "Suggest points")
+                                </button>
+                                @if (!string.IsNullOrWhiteSpace(_suggestFeedback))
+                                {
+                                    <div class="alert alert-warning mt-3">@_suggestFeedback</div>
+                                }
+                                @if (_suggestedPoints.HasValue)
+                                {
+                                    <div class="alert alert-info mt-3">
+                                        <div class="fw-semibold">Suggested points: @_suggestedPoints.Value</div>
+                                        @if (!string.IsNullOrWhiteSpace(_suggestionReason))
+                                        {
+                                            <div class="text-muted small">@_suggestionReason</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label">Deed nature</label>
                                 <div class="btn-group w-100" role="group">
                                     <input type="radio" class="btn-check" name="kind" id="good" checked="@_form.IsGood" @onchange="() => SetGood(true)" />
@@ -86,43 +109,6 @@
                         }
                     </div>
                 </div>
-                <div class="card card-elevated mt-4">
-                    <div class="card-body">
-                        <h5 class="card-title">AI points suggestion</h5>
-                        <p class="text-muted">Select a deed type and describe the situation to get a suggested point adjustment.</p>
-                        <div class="mb-3">
-                            <label class="form-label">Deed type</label>
-                            <select class="form-select" @onchange="OnSuggestDeedTypeChanged">
-                                <option value="">Select a deed type</option>
-                                @foreach (var deed in _deedTypes)
-                                {
-                                    <option value="@deed.Id" selected="@(deed.Id == _suggestDeedTypeId)">@deed.Name</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Condition or details</label>
-                            <InputTextArea class="form-control" @bind-Value="_suggestCondition" rows="3" placeholder="Describe the specific incident" />
-                        </div>
-                        <button class="btn btn-outline-secondary w-100" type="button" @onclick="SuggestPointsAsync" disabled="@(_suggesting || _suggestDeedTypeId is null || string.IsNullOrWhiteSpace(_suggestCondition))">
-                            @(_suggesting ? "Contacting AI..." : "Suggest points")
-                        </button>
-                        @if (!string.IsNullOrWhiteSpace(_suggestFeedback))
-                        {
-                            <div class="alert alert-warning mt-3">@_suggestFeedback</div>
-                        }
-                        @if (_suggestedPoints.HasValue)
-                        {
-                            <div class="alert alert-info mt-3">
-                                <div class="fw-semibold">Suggested points: @_suggestedPoints.Value</div>
-                                @if (!string.IsNullOrWhiteSpace(_suggestionReason))
-                                {
-                                    <div class="text-muted small">@_suggestionReason</div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
             </div>
         </div>
     }
@@ -137,7 +123,6 @@
     private readonly DeedTypeForm _form = new();
     private string? _feedback;
     private bool _autoLinkAttempted;
-    private Guid? _suggestDeedTypeId;
     private string _suggestCondition = string.Empty;
     private bool _suggesting;
     private int? _suggestedPoints;
@@ -246,35 +231,17 @@
         }
     }
 
-    private void OnSuggestDeedTypeChanged(ChangeEventArgs args)
-    {
-        if (Guid.TryParse(args.Value?.ToString(), out var deedTypeId))
-        {
-            _suggestDeedTypeId = deedTypeId;
-            _suggestedPoints = null;
-            _suggestionReason = null;
-            _suggestFeedback = null;
-        }
-    }
-
     private async Task SuggestPointsAsync()
     {
-        if (_suggestDeedTypeId is null)
+        if (string.IsNullOrWhiteSpace(_form.Name))
         {
-            _suggestFeedback = "Select a deed type first.";
+            _suggestFeedback = "Enter a deed name first.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_suggestCondition))
         {
             _suggestFeedback = "Describe the specific condition first.";
-            return;
-        }
-
-        var deedType = _deedTypes.FirstOrDefault(x => x.Id == _suggestDeedTypeId.Value);
-        if (deedType is null)
-        {
-            _suggestFeedback = "Deed type not found.";
             return;
         }
 
@@ -285,7 +252,7 @@
 
         try
         {
-            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(deedType.Name, _suggestCondition, deedType.Points >= 0);
+            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(_form.Name, _suggestCondition, _form.IsGood);
             if (suggestion is null)
             {
                 _suggestFeedback = "AI could not suggest points right now. Try again.";
