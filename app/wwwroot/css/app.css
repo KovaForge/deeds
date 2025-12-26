@@ -93,11 +93,12 @@ a, .btn-link {
 
 .content {
     padding: 28px 32px;
+    min-width: 0;
 }
 
 .app-shell {
     display: grid;
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 240px minmax(0, 1fr);
     min-height: 100vh;
     background: var(--page-bg);
 }
@@ -113,6 +114,8 @@ a, .btn-link {
     border-right: 1px solid var(--page-border);
     position: sticky;
     top: 0;
+    width: 240px;
+    flex: 0 0 240px;
 }
 
 .brand {
@@ -171,6 +174,7 @@ a, .btn-link {
     padding: 20px;
     box-shadow: 0 10px 40px var(--page-shadow);
     border: 1px solid var(--page-border);
+    width: 100%;
 }
 
 .content-section {
