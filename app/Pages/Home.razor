@@ -102,8 +102,18 @@
 				<div class="card card-elevated">
 					<div class="card-body">
 						<h5 class="fw-semibold mb-2">We couldn't load your dashboard yet</h5>
-						<p class="text-muted mb-3">Finish signing in and try again in a moment.</p>
-						<button class="btn btn-primary" @onclick="LoadDashboardAsync">Retry loading</button>
+						<p class="text-muted mb-3">
+							@(_linkRequired
+								? "Your Microsoft sign-in doesn't match the saved parent account. Link your existing parent email in Settings."
+								: "Finish signing in and try again in a moment.")
+						</p>
+						<div class="d-flex flex-wrap gap-2">
+							<button class="btn btn-primary" @onclick="LoadDashboardAsync">Retry loading</button>
+							@if (_linkRequired)
+							{
+								<button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("settings")'>Open settings</button>
+							}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -165,6 +175,8 @@
 	private AuthUser? _authUser;
 	private bool _isLoading = true;
 	private bool _loadError;
+	private bool _linkRequired;
+	private string? _loadErrorMessage;
 	private bool _dataRefreshAttempted;
 	private readonly List<ChildSummary> _children = [];
 	private int _totalPoints;
@@ -219,6 +231,8 @@
 
 		_isLoading = true;
 		_loadError = false;
+		_linkRequired = false;
+		_loadErrorMessage = null;
 		_children.Clear();
 		_totalPoints = 0;
 		_totalDollars = 0m;
@@ -226,30 +240,44 @@
 		try
 		{
 			var children = await ApiClient.GetChildrenAsync(_parentId.Value);
-
-			if (children.Count > 0)
+			foreach (var child in children)
 			{
-				var balanceTasks = children.Select(async child => new
-				{
-					Child = child,
-					Balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId.Value),
-					Deeds = await ApiClient.GetDeedsForChildAsync(child.Id, _parentId.Value)
-				});
+				BalanceDto? balance = null;
+				IReadOnlyList<DeedDto> deeds = Array.Empty<DeedDto>();
 
-				foreach (var result in await Task.WhenAll(balanceTasks))
+				try
 				{
-					var points = result.Balance?.Points ?? 0;
-					var dollars = result.Balance?.Dollars ?? 0m;
-					_children.Add(new ChildSummary(result.Child.Id, result.Child.Name, points, dollars, result.Deeds.Count));
-					_totalPoints += points;
-					_totalDollars += dollars;
+					balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId.Value);
 				}
+				catch (Exception balanceEx)
+				{
+					Console.WriteLine($"Dashboard balance error: {balanceEx.Message}");
+				}
+
+				try
+				{
+					deeds = await ApiClient.GetDeedsForChildAsync(child.Id, _parentId.Value);
+				}
+				catch (Exception deedEx)
+				{
+					Console.WriteLine($"Dashboard deeds error: {deedEx.Message}");
+				}
+
+				var points = balance?.Points ?? 0;
+				var dollars = balance?.Dollars ?? 0m;
+				_children.Add(new ChildSummary(child.Id, child.Name, points, dollars, deeds.Count));
+				_totalPoints += points;
+				_totalDollars += dollars;
 			}
 		}
 		catch (Exception ex)
 		{
 			_loadError = true;
-			// Log error but keep UI functional
+			_loadErrorMessage = ex.Message;
+			if (ex.Message.Contains("ParentId does not match authenticated user", StringComparison.OrdinalIgnoreCase))
+			{
+				_linkRequired = true;
+			}
 			Console.WriteLine($"Dashboard error: {ex.Message}");
 		}
         finally
