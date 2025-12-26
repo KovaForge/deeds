@@ -159,12 +159,12 @@
 	private decimal _totalDollars;
 	private bool _authRefreshed;
 
-	protected override async Task OnInitializedAsync()
-	{
-		_authUser = await Auth.GetUserAsync();
-		_parentId = await Settings.GetParentIdAsync();
-		await LoadDashboardAsync();
-	}
+    protected override async Task OnInitializedAsync()
+    {
+        _authUser = await Auth.GetUserAsync();
+        _parentId = await ResolveParentIdAsync();
+        await LoadDashboardAsync();
+    }
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
@@ -179,36 +179,31 @@
 
 	private async Task RefreshAuthAsync()
 	{
-		Auth.ClearCache();
-		var latest = await Auth.GetUserAsync();
-		if (!Equals(latest, _authUser))
-		{
-			_authUser = latest;
-			StateHasChanged();
-		}
+        Auth.ClearCache();
+        var latest = await Auth.GetUserAsync();
+        if (!Equals(latest, _authUser))
+        {
+            _authUser = latest;
+            StateHasChanged();
+        }
+        _parentId = await ResolveParentIdAsync();
 
-		var latestParentId = await Settings.GetParentIdAsync();
-		if (latestParentId != _parentId)
-		{
-			_parentId = latestParentId;
-		}
+        if (_parentId is not null && !_dataRefreshAttempted && (_children.Count == 0 || _loadError))
+        {
+            _dataRefreshAttempted = true;
+            await LoadDashboardAsync();
+            StateHasChanged();
+        }
+    }
 
-		if (_parentId is not null && !_dataRefreshAttempted && (_children.Count == 0 || _loadError))
-		{
-			_dataRefreshAttempted = true;
-			await LoadDashboardAsync();
-			StateHasChanged();
-		}
-	}
-
-	private async Task LoadDashboardAsync()
-	{
-		if (_parentId is null)
-		{
-			_isLoading = false;
-			_loadError = false;
-			return;
-		}
+    private async Task LoadDashboardAsync()
+    {
+        if (_parentId is null)
+        {
+            _isLoading = false;
+            _loadError = false;
+            return;
+        }
 
 		_isLoading = true;
 		_loadError = false;
@@ -245,11 +240,35 @@
 			// Log error but keep UI functional
 			Console.WriteLine($"Dashboard error: {ex.Message}");
 		}
-		finally
-		{
-			_isLoading = false;
-		}
-	}
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task<Guid?> ResolveParentIdAsync()
+    {
+        var storedParent = await Settings.GetParentIdAsync();
+
+        try
+        {
+            var current = await ApiClient.GetCurrentParentAsync();
+            if (current is not null)
+            {
+                if (storedParent != current.Id)
+                {
+                    await Settings.SetParentIdAsync(current.Id);
+                }
+                return current.Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error resolving current parent: {ex.Message}");
+        }
+
+        return storedParent;
+    }
 
 	private sealed record ChildSummary(Guid Id, string Name, int Points, decimal Dollars, int DeedsCount);
 
