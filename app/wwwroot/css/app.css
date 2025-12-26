@@ -22,6 +22,14 @@ body {
     color: var(--page-text);
 }
 
+h1:focus {
+    outline: none;
+}
+
+a, .btn-link {
+    color: var(--page-link);
+}
+
 .page[b-aikm9ua061] {
     position: relative;
     display: flex;
@@ -37,14 +45,6 @@ body {
     grid-template-columns: 1fr;
     gap: 0.5rem;
     max-width: 420px;
-}
-
-h1:focus {
-    outline: none;
-}
-
-a, .btn-link {
-    color: var(--page-link);
 }
 
 .text-muted {
@@ -86,6 +86,41 @@ a, .btn-link {
     padding-top: 1.1rem;
 }
 
+.top-nav {
+    background: var(--page-bg) !important;
+    box-shadow: 0 4px 12px rgba(4, 6, 16, 0.4);
+    border-bottom: 1px solid rgba(140, 160, 220, 0.22);
+}
+
+.top-nav .navbar-brand,
+.top-nav .nav-link {
+    color: #dbe4ff !important;
+}
+
+.top-nav .nav-link.active,
+.top-nav .nav-link:hover {
+    background-color: rgba(120, 140, 255, 0.25);
+    color: #ffffff !important;
+}
+
+.app-shell {
+    background: var(--page-bg);
+    min-height: 100vh;
+}
+
+.main-content {
+    background: var(--page-bg);
+}
+
+.main-content .container,
+.main-content .container-fluid {
+    background: transparent;
+}
+
+.content-section {
+    padding: 2rem 1.5rem 3rem;
+}
+
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }
@@ -124,7 +159,7 @@ a, .btn-link {
 }
 
 .blazor-error-boundary::after {
-    content: "An error has occurred."
+    content: "An error has occurred.";
 }
 
 .loading-progress {
