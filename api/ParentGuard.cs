@@ -56,7 +56,7 @@ public static class ParentGuard
             }
 
             parentId = parent.Id;
-            Data.UpsertParentAuthLink(connectionString, principal.Provider, principal.UserId, parentId, normalizedEmail)
+            Data.UpsertParentAuthLink(connectionString, principal.Provider, principal.UserId, parentId, normalizedEmail, null)
                 .GetAwaiter().GetResult();
             if (payloadParentId.HasValue && payloadParentId.Value != Guid.Empty && payloadParentId.Value != parentId)
             {

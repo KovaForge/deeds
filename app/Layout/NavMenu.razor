@@ -1,5 +1,6 @@
 @inject AuthService Auth
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <aside class="sidebar">
     <div class="brand">Good Deeds Tracker</div>
@@ -17,6 +18,7 @@
         <NavLink class="nav-link" href="quickstart">Quick Start</NavLink>
         <NavLink class="nav-link" href="children">Children</NavLink>
         <NavLink class="nav-link" href="deeds">Deed Types</NavLink>
+        <NavLink class="nav-link" href="profile">Profile</NavLink>
         <NavLink class="nav-link" href="settings">Settings</NavLink>
     </nav>
     <div class="auth-block">
@@ -37,7 +39,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Auth.UserChanged += OnAuthChanged;
         _authUser = await Auth.GetUserAsync();
+    }
+
+    private void OnAuthChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _authUser = await Auth.GetUserAsync();
+            StateHasChanged();
+        });
     }
 
     private void ToggleNavMenu()
@@ -61,5 +73,10 @@
 
             return relative.StartsWith('/') ? relative : $"/{relative}";
         }
+    }
+
+    public void Dispose()
+    {
+        Auth.UserChanged -= OnAuthChanged;
     }
 }
