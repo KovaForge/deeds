@@ -5,6 +5,8 @@ using Npgsql;
 
 public record DeedDetails(Guid Id, Guid ChildId, Guid ParentId);
 public record DeedTypeDetails(Guid Id, Guid ParentId);
+public record AiKeyRecord(string CipherText, string Nonce, string Tag);
+public record ParentAuthLink(Guid ParentId, string Provider, string UserId, string? Email);
 
 public static class Data
 {
@@ -54,6 +56,25 @@ create table if not exists redemptions(
   description text,
   created_by text not null,
   created_at timestamptz not null default now()
+);
+
+create table if not exists parent_ai_keys(
+  parent_id uuid primary key references parents(id) on delete cascade,
+  api_key_cipher text not null,
+  api_key_iv text not null,
+  api_key_tag text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists parent_auth_links(
+  provider text not null,
+  user_id text not null,
+  parent_id uuid not null references parents(id) on delete cascade,
+  email text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key(provider, user_id)
 );";
     await using var db = Conn(cs);
     await db.ExecuteAsync(sql);
@@ -374,6 +395,107 @@ order by occurred_at;";
 
     await using var db = Conn(cs);
     return await db.QueryAsync<ChildHistoryRow>(sql, new { ChildId = childId });
+  }
+
+  public static async Task<IEnumerable<ChildWithBalanceDto>> GetChildrenWithBalances(string cs, Guid parentId)
+  {
+    const string sql = @"
+select
+  c.id as Id,
+  c.parent_id as ParentId,
+  c.name as Name,
+  c.dollar_per_point as DollarPerPoint,
+  (coalesce(d.points, 0) - coalesce(r.points, 0))::integer as Points,
+  (coalesce(d.points, 0) - coalesce(r.points, 0)) * c.dollar_per_point as Dollars
+from children c
+left join (
+  select child_id, sum(points)::integer as points
+  from deeds
+  group by child_id
+) d on d.child_id = c.id
+left join (
+  select child_id, sum(points)::integer as points
+  from redemptions
+  group by child_id
+) r on r.child_id = c.id
+where c.parent_id = @ParentId
+order by c.created_date;";
+
+    await using var db = Conn(cs);
+    return await db.QueryAsync<ChildWithBalanceDto>(sql, new { ParentId = parentId });
+  }
+
+  public static async Task<AiKeyRecord?> GetAiKeyForParent(string cs, Guid parentId)
+  {
+    const string sql = @"
+select api_key_cipher as ""CipherText"", api_key_iv as ""Nonce"", api_key_tag as ""Tag""
+from parent_ai_keys
+where parent_id = @ParentId;";
+
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<AiKeyRecord>(sql, new { ParentId = parentId });
+  }
+
+  public static async Task UpsertAiKeyForParent(string cs, Guid parentId, AiKeyRecord record)
+  {
+    const string sql = @"
+insert into parent_ai_keys(parent_id, api_key_cipher, api_key_iv, api_key_tag)
+values(@ParentId, @CipherText, @Nonce, @Tag)
+on conflict (parent_id)
+do update set
+  api_key_cipher = excluded.api_key_cipher,
+  api_key_iv = excluded.api_key_iv,
+  api_key_tag = excluded.api_key_tag,
+  updated_at = now();";
+
+    await using var db = Conn(cs);
+    await db.ExecuteAsync(sql, new
+    {
+      ParentId = parentId,
+      record.CipherText,
+      record.Nonce,
+      record.Tag
+    });
+  }
+
+  public static async Task<bool> DeleteAiKeyForParent(string cs, Guid parentId)
+  {
+    const string sql = "delete from parent_ai_keys where parent_id = @ParentId;";
+    await using var db = Conn(cs);
+    var affected = await db.ExecuteAsync(sql, new { ParentId = parentId });
+    return affected > 0;
+  }
+
+  public static async Task<Guid?> GetLinkedParentId(string cs, string provider, string userId)
+  {
+    const string sql = @"
+select parent_id
+from parent_auth_links
+where provider = @Provider and user_id = @UserId;";
+
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<Guid?>(sql, new { Provider = provider, UserId = userId });
+  }
+
+  public static async Task UpsertParentAuthLink(string cs, string provider, string userId, Guid parentId, string? email)
+  {
+    const string sql = @"
+insert into parent_auth_links(provider, user_id, parent_id, email)
+values(@Provider, @UserId, @ParentId, @Email)
+on conflict (provider, user_id)
+do update set
+  parent_id = excluded.parent_id,
+  email = excluded.email,
+  updated_at = now();";
+
+    await using var db = Conn(cs);
+    await db.ExecuteAsync(sql, new
+    {
+      Provider = provider,
+      UserId = userId,
+      ParentId = parentId,
+      Email = email
+    });
   }
 
   public static string ToCsv(IEnumerable<ChildHistoryRow> rows)

@@ -1,6 +1,7 @@
 @page "/children/{ChildId:guid}"
 
 @inject ApiClient ApiClient
+@inject AuthService Auth
 @inject UserSettingsService Settings
 @inject ChatGptService ChatGpt
 @inject NavigationManager Navigation
@@ -147,6 +148,7 @@ else
     private bool _isSuggesting;
     private ChildDto? _child;
     private BalanceDto? _balance;
+    private AuthUser? _authUser;
     private readonly List<DeedDto> _deeds = [];
     private readonly List<DeedTypeDto> _deedTypes = [];
     private readonly DeedForm _form = new();
@@ -154,6 +156,11 @@ else
     private string? _suggestionReason;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authUser = await Auth.GetUserAsync();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -234,7 +241,7 @@ else
                 note = $"{_form.Condition}\n\n{_form.Note.Trim()}";
             }
             
-            await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, _parentId.Value.ToString());
+            await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, ResolveCreatedBy());
             _form.Condition = string.Empty;
             _form.Note = string.Empty;
             _suggestionReason = null;
@@ -288,13 +295,6 @@ else
             return;
         }
 
-        var apiKey = await Settings.GetChatGptKeyAsync();
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _feedback = "Add a ChatGPT API key in Settings to use AI suggestions.";
-            return;
-        }
-
         var deedType = _deedTypes.FirstOrDefault(x => x.Id == _form.DeedTypeId);
         if (deedType is null)
         {
@@ -307,7 +307,7 @@ else
 
         try
         {
-            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(apiKey, deedType.Name, _form.Condition, deedType.Points >= 0);
+            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(deedType.Name, _form.Condition, deedType.Points >= 0);
             if (suggestion is null)
             {
                 _feedback = "AI could not suggest points right now. Try again.";
@@ -347,4 +347,7 @@ else
         public int Points { get; set; }
         public string? Note { get; set; }
     }
+
+    private string? ResolveCreatedBy()
+        => _authUser?.DisplayName ?? _authUser?.Email ?? _parentId?.ToString();
 }

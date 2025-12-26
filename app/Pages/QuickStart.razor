@@ -1,6 +1,7 @@
 @page "/quickstart"
 @using GoodDeeds.Client.Models
 @inject ApiClient Api
+@inject AuthService Auth
 @inject UserSettingsService UserSettings
 
 <h3>Quick Start</h3>
@@ -117,6 +118,7 @@
     private DeedDto? _lastDeed;
     private RedemptionDto? _lastRedemption;
     private BalanceDto? _balance;
+    private AuthUser? _authUser;
 
     private string _parentEmail = string.Empty;
     private string _childName = string.Empty;
@@ -138,6 +140,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _authUser = await Auth.GetUserAsync();
         var saved = await UserSettings.GetParentIdAsync();
         if (saved.HasValue)
         {
@@ -153,6 +156,11 @@
             {
                 _parent = null;
             }
+        }
+
+        if (string.IsNullOrWhiteSpace(_parentEmail) && _authUser?.Email is not null)
+        {
+            _parentEmail = _authUser.Email;
         }
     }
 
@@ -262,7 +270,7 @@
 
         try
         {
-            _lastDeed = await Api.CreateDeedAsync(_parent.Id, childId, deedTypeId, _deedPointsOverride, _deedNote, _parentEmail);
+            _lastDeed = await Api.CreateDeedAsync(_parent.Id, childId, deedTypeId, _deedPointsOverride, _deedNote, ResolveCreatedBy());
             _success = "Deed logged";
         }
         catch (Exception ex)
@@ -294,7 +302,7 @@
 
         try
         {
-            _lastRedemption = await Api.CreateRedemptionAsync(_parent.Id, childId, _redeemPoints, _redeemDescription, _parentEmail);
+            _lastRedemption = await Api.CreateRedemptionAsync(_parent.Id, childId, _redeemPoints, _redeemDescription, ResolveCreatedBy());
             _success = "Redemption saved";
         }
         catch (Exception ex)
@@ -328,4 +336,7 @@
             _error = ex.Message;
         }
     }
+
+    private string ResolveCreatedBy()
+        => _authUser?.DisplayName ?? _authUser?.Email ?? _parentEmail;
 }

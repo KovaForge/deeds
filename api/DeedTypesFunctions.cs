@@ -36,7 +36,7 @@ public class DeedTypesFunctions
         }
 
         var payloadParentId = payload.ParentId;
-        if (!ParentGuard.TryGetParent(req, payloadParentId, out var parentId, out var guardError))
+        if (!ParentGuard.TryGetParent(req, _cs, payloadParentId, out var parentId, out var guardError))
         {
             return guardError!;
         }
@@ -75,7 +75,7 @@ public class DeedTypesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/{parentId:guid}/deed-types")] HttpRequestData req,
         Guid parentId)
     {
-        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        if (!ParentGuard.TryEnsureParent(req, _cs, parentId, out var guardError))
         {
             return guardError!;
         }
@@ -111,7 +111,7 @@ public class DeedTypesFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
-        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var parentError))
+        if (!ParentGuard.TryGetParent(req, _cs, payload.ParentId, out var parentId, out var parentError))
         {
             return parentError;
         }
@@ -166,7 +166,7 @@ public class DeedTypesFunctions
         Guid parentId,
         Guid deedTypeId)
     {
-        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        if (!ParentGuard.TryEnsureParent(req, _cs, parentId, out var guardError))
         {
             return guardError!;
         }

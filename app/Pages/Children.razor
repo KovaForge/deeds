@@ -114,11 +114,12 @@ else
         try
         {
             _children.Clear();
-            var children = await ApiClient.GetChildrenAsync(_parentId!.Value);
+            var children = await ApiClient.GetChildrenWithBalancesAsync(_parentId!.Value);
             foreach (var child in children)
             {
-                var balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId!.Value) ?? new BalanceDto(child.Id, 0, 0m);
-                _children.Add(new ChildWithBalance(child, balance));
+                var childDto = new ChildDto(child.Id, child.ParentId, child.Name, child.DollarPerPoint);
+                var balanceDto = new BalanceDto(child.Id, child.Points, child.Dollars);
+                _children.Add(new ChildWithBalance(childDto, balanceDto));
             }
         }
         catch (Exception ex)

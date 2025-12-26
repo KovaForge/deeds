@@ -40,7 +40,7 @@ public class DeedsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ChildId and DeedTypeId are required");
         }
 
-        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var parentError))
+        if (!ParentGuard.TryGetParent(req, _cs, payload.ParentId, out var parentId, out var parentError))
         {
             return parentError;
         }
@@ -83,7 +83,7 @@ public class DeedsFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/deeds")] HttpRequestData req,
         Guid childId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var parentError))
         {
             return parentError;
         }
@@ -106,7 +106,7 @@ public class DeedsFunctions
         Guid childId,
         Guid deedId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var parentError))
         {
             return parentError;
         }

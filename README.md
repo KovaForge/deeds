@@ -96,9 +96,27 @@ The dev server defaults to `https://localhost:7032` (and `http://localhost:5269`
 ## First-Time Use
 
 1. Visit the **Quick Start** page to create a parent, add a child, add a deed type, log a deed, redeem points, and view balance from one screen.
-2. Optional: paste an OpenAI API key in **Settings** to enable the **Ask ChatGPT for points** button on the child detail page. Keys stay in browser local storage only.
+2. Optional: add your OpenAI API key in **Settings** to enable the **Ask AI to adjust points** button on the child detail page.
 3. Head to **Children** to manage children, then **Deed Types** to define reusable deeds.
 4. Open a child profile to log deeds, delete mistakes, trigger redemptions, and view balance history.
+
+## Microsoft Sign-In
+
+The client uses Azure Static Web Apps authentication endpoints (`/.auth/login/aad` and `/.auth/me`) to sign in and link a parent account by email. Configure Microsoft identity in your Static Web Apps resource and ensure the app registration allows the audience you want (work/school and optional personal Microsoft accounts).
+
+Required redirect URI:
+
+- `https://<your-app>.azurestaticapps.net/.auth/login/aad/callback`
+
+For local development, use the Static Web Apps CLI (`swa start`) if you need to test sign-in; otherwise the sign-in buttons will not return a user locally.
+
+## AI Key Storage
+
+Each user can save their own OpenAI API key in **Settings**. Keys are encrypted server-side using `AI_KEY_ENCRYPTION_KEY` and stored per parent account. Set `AI_KEY_ENCRYPTION_KEY` to a base64-encoded 32-byte value in the Functions app configuration.
+
+## Linking Accounts
+
+If you sign in with Microsoft using an email address that differs from the parent email you previously stored in the app, open **Settings** and use **Link existing account** to map your Microsoft identity to the existing parent email.
 
 ## REST API Summary
 

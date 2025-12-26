@@ -20,7 +20,7 @@ public class BalancesFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "balances/{childId:guid}")] HttpRequestData req,
         Guid childId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var error))
         {
             return error;
         }
