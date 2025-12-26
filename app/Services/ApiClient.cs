@@ -304,6 +304,63 @@ public class ApiClient
         throw new InvalidOperationException(error ?? "Unable to load redemptions");
     }
 
+    public async Task<AiKeyStatusDto> GetAiKeyStatusAsync()
+    {
+        var response = await _http.GetAsync("ai/key");
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<AiKeyStatusDto>()) ?? new AiKeyStatusDto(false);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new AiKeyStatusDto(false);
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to load AI key status (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task SetAiKeyAsync(string apiKey)
+    {
+        var response = await _http.PutAsJsonAsync("ai/key", new AiKeyRequest(apiKey));
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to save AI key (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task ClearAiKeyAsync()
+    {
+        var response = await _http.DeleteAsync("ai/key");
+        if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            return;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to clear AI key (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task<ParentDto> LinkParentAsync(string email)
+    {
+        var response = await _http.PostAsJsonAsync("parents/link", new LinkParentRequest(email));
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<ParentDto>())!;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to link parent (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
     private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
     {
         try

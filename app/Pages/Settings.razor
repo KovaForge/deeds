@@ -8,7 +8,7 @@
 <PageTitle>Settings</PageTitle>
 
 <h2 class="fw-bold mb-3">Settings</h2>
-<p class="text-muted">Connect your parent account and optionally store a ChatGPT API key for deed suggestions.</p>
+<p class="text-muted">Connect your parent account and manage AI suggestions.</p>
 
 <div class="row g-4">
     <div class="col-12 col-lg-6">
@@ -49,7 +49,7 @@
                         <InputText class="form-control" @bind-Value="_parentForm.Email" />
                         <div class="form-text">Use the same email each time to reconnect to the same parent.</div>
                     </div>
-                    <button type="submit" class="btn btn-primary" disabled="@_savingParent">@(_savingParent ? "Saving…" : "Save parent")</button>
+                    <button type="submit" class="btn btn-primary" disabled="@_savingParent">@(_savingParent ? "Saving." : "Save parent")</button>
                     @if (_hasStoredParent)
                     {
                         <button type="button" class="btn btn-outline-danger ms-2" @onclick="ClearParentAsync">Forget parent</button>
@@ -75,49 +75,78 @@
     <div class="col-12 col-lg-6">
         <div class="card card-elevated">
             <div class="card-body">
-                <h5 class="card-title">ChatGPT integration</h5>
-                <p class="text-muted">Store your API key locally (never sent to our servers) to get AI-recommended point values when logging deeds.</p>
+                <h5 class="card-title">AI suggestions</h5>
+                <p class="text-muted">Store your OpenAI key securely for your account. The key is encrypted server-side and never stored in your browser.</p>
 
-                <EditForm Model="_chatGptForm" OnValidSubmit="SaveChatGptKeyAsync">
+                <EditForm Model="_aiKeyForm" OnValidSubmit="SaveAiKeyAsync">
                     <DataAnnotationsValidator />
                     <div class="mb-3">
-                        <label class="form-label">ChatGPT API key</label>
-                        <InputText class="form-control" @bind-Value="_chatGptForm.ApiKey" type="password" />
-                        <div class="form-text">Key is saved in your browser’s local storage. Leave blank to clear.</div>
+                        <label class="form-label">OpenAI API key</label>
+                        <InputText class="form-control" @bind-Value="_aiKeyForm.ApiKey" type="password" />
+                        <div class="form-text">Your key is encrypted with the app's encryption key.</div>
                     </div>
-                    <button class="btn btn-primary" type="submit" disabled="@_savingChatGpt">@(_savingChatGpt ? "Saving…" : "Update key")</button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" type="submit" disabled="@(_savingAiKey || _authUser is null)">@(_savingAiKey ? "Saving." : "Save key")</button>
+                        <button class="btn btn-outline-danger" type="button" disabled="@(!_hasAiKey || _savingAiKey || _authUser is null)" @onclick="ClearAiKeyAsync">Clear key</button>
+                    </div>
                 </EditForm>
 
-                @if (_chatGptFeedback is not null)
+                @if (_aiKeyFeedback is not null)
                 {
-                    <div class="alert alert-info mt-3">@_chatGptFeedback</div>
+                    <div class="alert alert-info mt-3">@_aiKeyFeedback</div>
                 }
 
-                @if (_hasChatGptKey)
+                @if (_hasAiKey)
                 {
-                    <div class="alert alert-success mt-3">API key stored securely in this browser.</div>
+                    <div class="alert alert-success mt-3">AI key stored for this account.</div>
                 }
                 else
                 {
-                    <div class="alert alert-warning mt-3">No API key stored yet.</div>
+                    <div class="alert alert-warning mt-3">No AI key stored yet.</div>
                 }
             </div>
         </div>
     </div>
 </div>
 
+@if (ShowLinkPrompt)
+{
+    <div class="card card-elevated mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Link existing account</h5>
+            <p class="text-muted">Your Microsoft sign-in email doesn't match the parent email already saved in this browser. Enter the existing parent email to link it.</p>
+            <EditForm Model="_linkForm" OnValidSubmit="LinkExistingParentAsync">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label class="form-label">Existing parent email</label>
+                    <InputText class="form-control" @bind-Value="_linkForm.Email" />
+                    <div class="form-text">Example: the email you used before signing in (e.g., mike@delpach.com).</div>
+                </div>
+                <button class="btn btn-primary" type="submit" disabled="@_linkingParent">@(_linkingParent ? "Linking." : "Link account")</button>
+            </EditForm>
+            @if (_linkFeedback is not null)
+            {
+                <div class="alert alert-info mt-3">@_linkFeedback</div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     private readonly ParentForm _parentForm = new();
-    private readonly ChatGptForm _chatGptForm = new();
+    private readonly AiKeyForm _aiKeyForm = new();
+    private readonly LinkForm _linkForm = new();
 
     private AuthUser? _authUser;
     private ParentDto? _currentParent;
     private bool _hasStoredParent;
-    private bool _hasChatGptKey;
     private bool _savingParent;
-    private bool _savingChatGpt;
+    private bool _savingAiKey;
+    private bool _hasAiKey;
     private string? _parentFeedback;
-    private string? _chatGptFeedback;
+    private string? _aiKeyFeedback;
+    private bool _linkingParent;
+    private string? _linkFeedback;
 
     protected override async Task OnInitializedAsync()
     {
@@ -130,17 +159,17 @@
             if (_currentParent is not null)
             {
                 _parentForm.Email = _currentParent.Email;
+                _linkForm.Email = _currentParent.Email;
             }
         }
         else if (string.IsNullOrWhiteSpace(_parentForm.Email) && _authUser?.Email is not null)
         {
             _parentForm.Email = _authUser.Email;
         }
-        var apiKey = await UserSettings.GetChatGptKeyAsync();
-        _hasChatGptKey = !string.IsNullOrWhiteSpace(apiKey);
-        if (_hasChatGptKey)
+
+        if (_authUser is not null)
         {
-            _chatGptForm.ApiKey = "********";
+            await LoadAiKeyStatusAsync();
         }
     }
 
@@ -159,25 +188,34 @@
         {
             var email = _parentForm.Email.Trim().ToLowerInvariant();
             ParentDto parent;
-            try
+            if (_authUser is not null && !EmailsMatch(email, _authUser.Email))
             {
-                parent = await ApiClient.CreateParentAsync(email);
+                parent = await ApiClient.LinkParentAsync(email);
+                _parentFeedback = "Existing parent linked to your Microsoft sign-in.";
             }
-            catch (Exception ex)
+            else
             {
-                var existing = await ApiClient.FindParentByEmailAsync(email);
-                if (existing is null)
+                try
                 {
-                    throw new InvalidOperationException(ex.Message);
+                    parent = await ApiClient.CreateParentAsync(email);
                 }
+                catch (Exception ex)
+                {
+                    var existing = await ApiClient.FindParentByEmailAsync(email);
+                    if (existing is null)
+                    {
+                        throw new InvalidOperationException(ex.Message);
+                    }
 
-                parent = existing;
-                _parentFeedback = "Existing parent linked.";
+                    parent = existing;
+                    _parentFeedback = "Existing parent linked.";
+                }
             }
 
             _currentParent = parent;
             await UserSettings.SetParentIdAsync(parent.Id);
             _hasStoredParent = true;
+            _linkForm.Email = parent.Email;
             _parentFeedback ??= "Parent saved.";
         }
         catch (Exception ex)
@@ -192,7 +230,7 @@
 
     private async Task ClearParentAsync()
     {
-    await UserSettings.ClearParentIdAsync();
+        await UserSettings.ClearParentIdAsync();
         _hasStoredParent = false;
         _currentParent = null;
         _parentFeedback = "Parent removed from this browser.";
@@ -216,32 +254,114 @@
         await SaveParentAsync();
     }
 
-    private async Task SaveChatGptKeyAsync()
+    private async Task LinkExistingParentAsync()
     {
-        _savingChatGpt = true;
-        _chatGptFeedback = null;
+        if (_authUser is null)
+        {
+            _linkFeedback = "Sign in with Microsoft to link an existing account.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_linkForm.Email))
+        {
+            _linkFeedback = "Existing parent email is required.";
+            return;
+        }
+
+        _linkingParent = true;
+        _linkFeedback = null;
 
         try
         {
-            var key = string.IsNullOrWhiteSpace(_chatGptForm.ApiKey) || _chatGptForm.ApiKey == "********"
-                ? null
-                : _chatGptForm.ApiKey.Trim();
-
-            await UserSettings.SetChatGptKeyAsync(key);
-            _hasChatGptKey = key is not null;
-            _chatGptFeedback = _hasChatGptKey ? "API key saved locally." : "API key cleared.";
-            if (_hasChatGptKey)
-            {
-                _chatGptForm.ApiKey = "********";
-            }
+            var email = _linkForm.Email.Trim().ToLowerInvariant();
+            var parent = await ApiClient.LinkParentAsync(email);
+            _currentParent = parent;
+            await UserSettings.SetParentIdAsync(parent.Id);
+            _hasStoredParent = true;
+            _parentForm.Email = parent.Email;
+            _linkFeedback = "Account linked successfully.";
         }
         catch (Exception ex)
         {
-            _chatGptFeedback = ex.Message;
+            _linkFeedback = ex.Message;
         }
         finally
         {
-            _savingChatGpt = false;
+            _linkingParent = false;
+        }
+    }
+
+    private async Task LoadAiKeyStatusAsync()
+    {
+        try
+        {
+            var status = await ApiClient.GetAiKeyStatusAsync();
+            _hasAiKey = status.HasKey;
+        }
+        catch (Exception ex)
+        {
+            _aiKeyFeedback = ex.Message;
+        }
+    }
+
+    private async Task SaveAiKeyAsync()
+    {
+        if (_authUser is null)
+        {
+            _aiKeyFeedback = "Sign in with Microsoft to save your AI key.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_aiKeyForm.ApiKey))
+        {
+            _aiKeyFeedback = "API key is required.";
+            return;
+        }
+
+        _savingAiKey = true;
+        _aiKeyFeedback = null;
+
+        try
+        {
+            await ApiClient.SetAiKeyAsync(_aiKeyForm.ApiKey.Trim());
+            _aiKeyForm.ApiKey = string.Empty;
+            _hasAiKey = true;
+            _aiKeyFeedback = "AI key saved.";
+        }
+        catch (Exception ex)
+        {
+            _aiKeyFeedback = ex.Message;
+        }
+        finally
+        {
+            _savingAiKey = false;
+        }
+    }
+
+    private async Task ClearAiKeyAsync()
+    {
+        if (_authUser is null)
+        {
+            _aiKeyFeedback = "Sign in with Microsoft to manage your AI key.";
+            return;
+        }
+
+        _savingAiKey = true;
+        _aiKeyFeedback = null;
+
+        try
+        {
+            await ApiClient.ClearAiKeyAsync();
+            _hasAiKey = false;
+            _aiKeyFeedback = "AI key removed.";
+        }
+        catch (Exception ex)
+        {
+            _aiKeyFeedback = ex.Message;
+        }
+        finally
+        {
+            _savingAiKey = false;
         }
     }
 
@@ -250,10 +370,23 @@
         public string Email { get; set; } = string.Empty;
     }
 
-    private sealed class ChatGptForm
+    private sealed class AiKeyForm
     {
         public string ApiKey { get; set; } = string.Empty;
     }
+
+    private sealed class LinkForm
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+
+    private bool ShowLinkPrompt
+        => _authUser is not null
+           && _currentParent is not null
+           && !EmailsMatch(_currentParent.Email, _authUser.Email);
+
+    private static bool EmailsMatch(string? left, string? right)
+        => string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
 
     private string LoginUrl => $"/.auth/login/aad?post_login_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
 

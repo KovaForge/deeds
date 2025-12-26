@@ -23,6 +23,25 @@ public static class ParentGuard
         var principal = GetPrincipal(req);
         if (principal.IsAuthenticated)
         {
+            if (string.IsNullOrWhiteSpace(principal.Provider) || string.IsNullOrWhiteSpace(principal.UserId))
+            {
+                errorResponse = CreateError(req, HttpStatusCode.Forbidden, "Authenticated user is missing identity details.");
+                return false;
+            }
+
+            var linkedParentId = Data.GetLinkedParentId(connectionString, principal.Provider, principal.UserId).GetAwaiter().GetResult();
+            if (linkedParentId.HasValue)
+            {
+                parentId = linkedParentId.Value;
+                if (payloadParentId.HasValue && payloadParentId.Value != Guid.Empty && payloadParentId.Value != parentId)
+                {
+                    errorResponse = CreateError(req, HttpStatusCode.Conflict, "ParentId does not match authenticated user.");
+                    return false;
+                }
+
+                return true;
+            }
+
             if (string.IsNullOrWhiteSpace(principal.Email))
             {
                 errorResponse = CreateError(req, HttpStatusCode.Forbidden, "Authenticated user does not have an email claim.");
@@ -37,6 +56,8 @@ public static class ParentGuard
             }
 
             parentId = parent.Id;
+            Data.UpsertParentAuthLink(connectionString, principal.Provider, principal.UserId, parentId, normalizedEmail)
+                .GetAwaiter().GetResult();
             if (payloadParentId.HasValue && payloadParentId.Value != Guid.Empty && payloadParentId.Value != parentId)
             {
                 errorResponse = CreateError(req, HttpStatusCode.Conflict, "ParentId does not match authenticated user.");
@@ -138,6 +159,27 @@ public static class ParentGuard
         return true;
     }
 
+    public static bool TryGetAuthenticatedUser(HttpRequestData req, out AuthUserInfo user, out HttpResponseData? errorResponse)
+    {
+        user = default;
+        errorResponse = null;
+
+        var principal = GetPrincipal(req);
+        if (!principal.IsAuthenticated)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(principal.Provider) || string.IsNullOrWhiteSpace(principal.UserId))
+        {
+            errorResponse = CreateError(req, HttpStatusCode.Forbidden, "Authenticated user is missing identity details.");
+            return false;
+        }
+
+        user = new AuthUserInfo(principal.Provider, principal.UserId, principal.Email);
+        return true;
+    }
+
     public static HttpResponseData CreateError(HttpRequestData req, HttpStatusCode status, string message)
     {
         var res = req.CreateResponse(status);
@@ -193,7 +235,9 @@ public static class ParentGuard
                 }
             }
 
-            return new AuthPrincipal(true, email);
+            var provider = root.TryGetProperty("identityProvider", out var providerElement) ? providerElement.GetString() : null;
+            var userId = root.TryGetProperty("userId", out var userElement) ? userElement.GetString() : null;
+            return new AuthPrincipal(true, provider, userId, email);
         }
         catch
         {
@@ -228,8 +272,10 @@ public static class ParentGuard
     private static bool IsEmail(string? value)
         => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
 
-    private readonly record struct AuthPrincipal(bool IsAuthenticated, string? Email)
+    private readonly record struct AuthPrincipal(bool IsAuthenticated, string? Provider, string? UserId, string? Email)
     {
-        public static AuthPrincipal Anonymous => new(false, null);
+        public static AuthPrincipal Anonymous => new(false, null, null, null);
     }
+
+    public sealed record AuthUserInfo(string Provider, string UserId, string? Email);
 }

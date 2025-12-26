@@ -32,6 +32,9 @@ builder.Services.AddScoped<ApiClient>(_ => new ApiClient(new HttpClient
 }));
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserSettingsService>();
-builder.Services.AddScoped<ChatGptService>();
+builder.Services.AddScoped<ChatGptService>(_ => new ChatGptService(new HttpClient
+{
+	BaseAddress = apiBaseUri
+}));
 
 await builder.Build().RunAsync();

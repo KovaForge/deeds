@@ -295,13 +295,6 @@ else
             return;
         }
 
-        var apiKey = await Settings.GetChatGptKeyAsync();
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _feedback = "Add a ChatGPT API key in Settings to use AI suggestions.";
-            return;
-        }
-
         var deedType = _deedTypes.FirstOrDefault(x => x.Id == _form.DeedTypeId);
         if (deedType is null)
         {
@@ -314,7 +307,7 @@ else
 
         try
         {
-            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(apiKey, deedType.Name, _form.Condition, deedType.Points >= 0);
+            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(deedType.Name, _form.Condition, deedType.Points >= 0);
             if (suggestion is null)
             {
                 _feedback = "AI could not suggest points right now. Try again.";

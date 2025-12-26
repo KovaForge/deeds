@@ -146,6 +146,43 @@ public class ParentsFunctions
         }
     }
 
+    [Function("LinkParent")]
+    public async Task<HttpResponseData> LinkParent(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "parents/link")] HttpRequestData req)
+    {
+        if (!ParentGuard.TryGetAuthenticatedUser(req, out var user, out var authError))
+        {
+            return authError ?? ParentGuard.CreateError(req, HttpStatusCode.Unauthorized, "Authentication required.");
+        }
+
+        LinkParentRequest? payload;
+        try
+        {
+            payload = await req.ReadFromJsonAsync<LinkParentRequest>();
+        }
+        catch (JsonException)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Invalid JSON payload");
+        }
+
+        if (payload is null || string.IsNullOrWhiteSpace(payload.Email))
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Email is required");
+        }
+
+        var normalizedEmail = payload.Email.Trim().ToLowerInvariant();
+        var parent = await Data.GetParentByEmail(_cs, normalizedEmail);
+        if (parent is null)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Parent account not found for that email.");
+        }
+
+        await Data.UpsertParentAuthLink(_cs, user.Provider, user.UserId, parent.Id, normalizedEmail);
+        var res = req.CreateResponse(HttpStatusCode.OK);
+        await res.WriteAsJsonAsync(parent);
+        return res;
+    }
+
     private static async Task<HttpResponseData> CreateErrorResponse(HttpRequestData req, HttpStatusCode status, string message)
     {
         var res = req.CreateResponse(status);
