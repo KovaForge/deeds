@@ -155,7 +155,18 @@
 
         @if (_loadDurationMs.HasValue)
         {
-            <div class="text-muted small mt-4">Page loaded in @_loadDurationMs.Value ms.</div>
+            <div class="text-muted small mt-4">
+                Page loaded in @_loadDurationMs.Value ms.
+                @if (_debugTimings.Count > 0)
+                {
+                    <div class="mt-2">
+                        @foreach (var entry in _debugTimings)
+                        {
+                            <div>@entry.Key: @entry.Value ms</div>
+                        }
+                    </div>
+                }
+            </div>
         }
     }
 </div>
@@ -182,6 +193,7 @@
     private bool _deedTypesLoaded;
     private long? _loadDurationMs;
     private Stopwatch? _loadTimer;
+    private readonly Dictionary<string, long> _debugTimings = new();
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -194,7 +206,12 @@
     {
         _loadTimer = Stopwatch.StartNew();
         _loadDurationMs = null;
+        _debugTimings.Clear();
+
+        var parentTimer = Stopwatch.StartNew();
         _parentId = await ResolveParentIdAsync();
+        parentTimer.Stop();
+        _debugTimings["Resolve parent"] = parentTimer.ElapsedMilliseconds;
         if (_parentId is null)
         {
             _isLoading = false;
@@ -244,7 +261,10 @@
             var balanceTask = ApiClient.GetChildBalanceAsync(ChildId, parentId);
             var deedsTask = ApiClient.GetDeedsForChildAsync(ChildId, parentId);
 
+            var childAwaitTimer = Stopwatch.StartNew();
             _child = await childTask;
+            childAwaitTimer.Stop();
+            _debugTimings["Load child"] = childAwaitTimer.ElapsedMilliseconds;
             if (_child is null)
             {
                 return;
@@ -252,7 +272,10 @@
 
             try
             {
+                var balanceAwaitTimer = Stopwatch.StartNew();
                 _balance = await balanceTask;
+                balanceAwaitTimer.Stop();
+                _debugTimings["Load balance"] = balanceAwaitTimer.ElapsedMilliseconds;
             }
             catch (Exception balanceEx)
             {
@@ -261,7 +284,10 @@
 
             try
             {
+                var deedsAwaitTimer = Stopwatch.StartNew();
                 _deeds.AddRange(await deedsTask);
+                deedsAwaitTimer.Stop();
+                _debugTimings["Load deeds"] = deedsAwaitTimer.ElapsedMilliseconds;
             }
             catch (Exception deedEx)
             {
@@ -295,7 +321,10 @@
         try
         {
             var parentId = _parentId.Value;
+            var deedTypesTimer = Stopwatch.StartNew();
             _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
+            deedTypesTimer.Stop();
+            _debugTimings["Load deed types"] = deedTypesTimer.ElapsedMilliseconds;
             _deedTypesLoaded = true;
 
             if (_deedTypes.Count > 0 && _form.DeedTypeId == Guid.Empty)
