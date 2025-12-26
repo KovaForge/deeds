@@ -234,6 +234,56 @@ public class ApiClient
         }
     }
 
+    public async Task<IReadOnlyList<RedeemTypeDto>> GetRedeemTypesAsync(Guid parentId)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, $"parents/{parentId}/redeem-types");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            var items = await res.Content.ReadFromJsonAsync<List<RedeemTypeDto>>();
+            return items ?? new List<RedeemTypeDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<RedeemTypeDto>();
+        }
+
+        var error = await ReadErrorAsync(res);
+        throw new InvalidOperationException(error ?? "Unable to load redeem types");
+    }
+
+    public async Task<RedeemTypeDto> CreateRedeemTypeAsync(Guid parentId, string name, int points)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "redeem-types")
+        {
+            Content = JsonContent.Create(new CreateRedeemTypeRequest(parentId, name, points))
+        };
+        request.Headers.Add("x-parent-id", parentId.ToString());
+
+        var response = await _http.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<RedeemTypeDto>())!;
+        }
+
+        var error = await ReadErrorAsync(response);
+        throw new InvalidOperationException(error ?? "Unable to create redeem type");
+    }
+
+    public async Task DeleteRedeemTypeAsync(Guid parentId, Guid redeemTypeId)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"parents/{parentId}/redeem-types/{redeemTypeId}");
+        request.Headers.Add("x-parent-id", parentId.ToString());
+        var response = await _http.SendAsync(request);
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
+        {
+            var error = await ReadErrorAsync(response);
+            throw new InvalidOperationException(error ?? "Unable to delete redeem type");
+        }
+    }
+
     public async Task<DeedDto> CreateDeedAsync(Guid parentId, Guid childId, Guid deedTypeId, int? points, string? note, string? createdBy)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "deeds")
@@ -286,11 +336,11 @@ public class ApiClient
         }
     }
 
-    public async Task<RedemptionDto> CreateRedemptionAsync(Guid parentId, Guid childId, int points, string? description, string? createdBy)
+    public async Task<RedemptionDto> CreateRedemptionAsync(Guid parentId, Guid childId, Guid redeemTypeId, string? description, string? createdBy)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "redemptions")
         {
-            Content = JsonContent.Create(new CreateRedemptionRequest(parentId, childId, points, description, createdBy))
+            Content = JsonContent.Create(new CreateRedemptionRequest(parentId, childId, redeemTypeId, description, createdBy))
         };
         request.Headers.Add("x-parent-id", parentId.ToString());
 

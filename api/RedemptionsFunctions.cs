@@ -40,14 +40,25 @@ public class RedemptionsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "ChildId is required");
         }
 
-        if (payload.Points <= 0)
+        if (payload.RedeemTypeId == Guid.Empty)
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Points must be greater than zero");
+            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "RedeemTypeId is required");
         }
 
         if (!ParentGuard.TryGetParent(req, _cs, payload.ParentId, out var parentId, out var parentError))
         {
             return parentError;
+        }
+
+        var redeemType = await Data.GetRedeemTypeById(_cs, payload.RedeemTypeId);
+        if (redeemType is null || redeemType.ParentId != parentId)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Redeem type not found for this parent");
+        }
+
+        if (!redeemType.Active)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Redeem type is inactive");
         }
 
         var child = await Data.GetChildById(_cs, payload.ChildId);
@@ -62,7 +73,7 @@ public class RedemptionsFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        if (balance.Points < payload.Points)
+        if (balance.Points < redeemType.Points)
         {
             return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Insufficient points to redeem");
         }
@@ -74,7 +85,7 @@ public class RedemptionsFunctions
             createdById = parsedCreatedBy;
         }
 
-        var created = await Data.CreateRedemption(_cs, payload.ChildId, payload.Points, description, createdById, DateTimeOffset.UtcNow);
+        var created = await Data.CreateRedemption(_cs, payload.ChildId, redeemType.Id, redeemType.Points, description, createdById, DateTimeOffset.UtcNow);
         var res = req.CreateResponse(HttpStatusCode.Created);
         await res.WriteAsJsonAsync(created);
         return res;

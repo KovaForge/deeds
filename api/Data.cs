@@ -42,6 +42,15 @@ create table if not exists deed_types(
   unique(parent_id, name)
 );
 
+create table if not exists redeem_types(
+  id uuid primary key,
+  parent_id uuid not null references parents(id) on delete cascade,
+  name text not null,
+  points integer not null,
+  active boolean not null default true,
+  unique(parent_id, name)
+);
+
 create table if not exists deeds(
   id uuid primary key,
   child_id uuid not null references children(id) on delete cascade,
@@ -58,6 +67,7 @@ create table if not exists redemptions(
   child_id uuid not null references children(id) on delete cascade,
   points integer not null check(points > 0),
   description text,
+  redeem_type_id uuid references redeem_types(id),
   created_by text not null,
   created_at timestamptz not null default now()
 );
@@ -100,6 +110,7 @@ create index if not exists idx_parent_invites_parent on parent_invites(parent_id
 create index if not exists idx_parent_invites_token on parent_invites(token);";
     await using var db = Conn(cs);
     await db.ExecuteAsync(sql);
+    await db.ExecuteAsync("alter table if exists redemptions add column if not exists redeem_type_id uuid references redeem_types(id);");
   }
 
   public static async Task<ParentDto?> GetParentById(string cs, Guid id)
@@ -253,6 +264,73 @@ returning id as Id, parent_id as ParentId, name as Name, points as Points, activ
     return affected > 0;
   }
 
+  public static async Task<RedeemTypeDto?> GetRedeemTypeById(string cs, Guid id)
+  {
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, points as Points, active as Active from redeem_types where id = @Id";
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<RedeemTypeDto>(sql, new { Id = id });
+  }
+
+  public static async Task<IEnumerable<RedeemTypeDto>> GetRedeemTypesForParent(string cs, Guid parentId)
+  {
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, points as Points, active as Active from redeem_types where parent_id = @ParentId order by name";
+    await using var db = Conn(cs);
+    return await db.QueryAsync<RedeemTypeDto>(sql, new { ParentId = parentId });
+  }
+
+  public static async Task<RedeemTypeDto?> GetRedeemTypeByName(string cs, Guid parentId, string name)
+  {
+    const string sql = "select id as Id, parent_id as ParentId, name as Name, points as Points, active as Active from redeem_types where parent_id = @ParentId and lower(name) = lower(@Name)";
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<RedeemTypeDto>(sql, new { ParentId = parentId, Name = name });
+  }
+
+  public static async Task<RedeemTypeDto> CreateRedeemType(string cs, Guid parentId, string name, int points)
+  {
+    const string sql = @"
+insert into redeem_types(id, parent_id, name, points, active)
+values(@Id, @ParentId, @Name, @Points, true)
+returning id as Id, parent_id as ParentId, name as Name, points as Points, active as Active;";
+
+    await using var db = Conn(cs);
+    var id = Guid.NewGuid();
+    return await db.QuerySingleAsync<RedeemTypeDto>(sql, new
+    {
+      Id = id,
+      ParentId = parentId,
+      Name = name,
+      Points = points
+    });
+  }
+
+  public static async Task<RedeemTypeDto?> UpdateRedeemType(string cs, Guid id, string name, int points, bool active)
+  {
+    const string sql = @"
+update redeem_types
+set name = @Name,
+  points = @Points,
+  active = @Active
+where id = @Id
+returning id as Id, parent_id as ParentId, name as Name, points as Points, active as Active;";
+
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<RedeemTypeDto>(sql, new
+    {
+      Id = id,
+      Name = name,
+      Points = points,
+      Active = active
+    });
+  }
+
+  public static async Task<bool> DeleteRedeemType(string cs, Guid redeemTypeId)
+  {
+    const string sql = "delete from redeem_types where id = @Id";
+    await using var db = Conn(cs);
+    var affected = await db.ExecuteAsync(sql, new { Id = redeemTypeId });
+    return affected > 0;
+  }
+
   public static async Task<DeedDto> CreateDeed(string cs, Guid childId, Guid deedTypeId, int points, string? note, Guid createdBy, DateTimeOffset occurredAt)
   {
     const string sql = @"
@@ -323,12 +401,12 @@ where d.id = @Id";
     return await db.QuerySingleOrDefaultAsync<DeedTypeDetails>(sql, new { Id = deedTypeId });
   }
 
-  public static async Task<RedemptionDto> CreateRedemption(string cs, Guid childId, int points, string? description, Guid createdBy, DateTimeOffset createdAt)
+  public static async Task<RedemptionDto> CreateRedemption(string cs, Guid childId, Guid redeemTypeId, int points, string? description, Guid createdBy, DateTimeOffset createdAt)
   {
     const string sql = @"
-insert into redemptions(id, child_id, points, description, created_at, created_by)
-values(@Id, @ChildId, @Points, @Description, @CreatedAt, @CreatedBy)
-returning id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by::text as CreatedBy;";
+insert into redemptions(id, child_id, points, description, redeem_type_id, created_at, created_by)
+values(@Id, @ChildId, @Points, @Description, @RedeemTypeId, @CreatedAt, @CreatedBy)
+returning id as Id, child_id as ChildId, points as Points, description as Description, redeem_type_id as RedeemTypeId, created_at as CreatedAt, created_by::text as CreatedBy;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -338,6 +416,7 @@ returning id as Id, child_id as ChildId, points as Points, description as Descri
       ChildId = childId,
       Points = points,
       Description = description,
+      RedeemTypeId = redeemTypeId,
       CreatedAt = createdAt,
       CreatedBy = createdBy
     });
@@ -346,7 +425,7 @@ returning id as Id, child_id as ChildId, points as Points, description as Descri
   public static async Task<IEnumerable<RedemptionDto>> GetRedemptionsForChild(string cs, Guid childId)
   {
     const string sql = @"
-  select id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by::text as CreatedBy
+  select id as Id, child_id as ChildId, points as Points, description as Description, redeem_type_id as RedeemTypeId, created_at as CreatedAt, created_by::text as CreatedBy
   from redemptions
   where child_id = @ChildId
   order by created_at desc;";
