@@ -112,6 +112,11 @@ a, .btn-link {
     background: var(--page-bg);
 }
 
+main.content {
+    background: var(--page-bg) !important;
+    min-height: 100vh;
+}
+
 .app-shell {
     display: grid;
     grid-template-columns: 240px minmax(0, 1fr);

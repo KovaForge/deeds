@@ -110,15 +110,17 @@
 
                         @if (_inviteLink is not null)
                         {
-                            <div class="alert alert-info mt-3">
-                                <div class="fw-semibold">Share this link</div>
-                                <div class="d-flex flex-column gap-2 mt-2">
-                                    <input class="form-control" value="@_inviteLink" readonly onfocus="this.select()" />
-                                    <button class="btn btn-outline-secondary btn-sm align-self-start" type="button" @onclick="CopyInviteAsync">Copy link</button>
-                                    @if (!string.IsNullOrWhiteSpace(_inviteToken))
-                                    {
-                                        <div class="small text-muted">Token: @_inviteToken</div>
-                                    }
+                            <div class="card card-elevated mt-3">
+                                <div class="card-body">
+                                    <div class="fw-semibold">Share this link</div>
+                                    <div class="d-flex flex-column gap-2 mt-2">
+                                        <input class="form-control" value="@_inviteLink" readonly onfocus="this.select()" />
+                                        <button class="btn btn-outline-secondary btn-sm align-self-start" type="button" @onclick="CopyInviteAsync">Copy link</button>
+                                        @if (!string.IsNullOrWhiteSpace(_inviteToken))
+                                        {
+                                            <div class="small text-muted">Token: @_inviteToken</div>
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         }
