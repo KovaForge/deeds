@@ -8,30 +8,33 @@
 <PageTitle>Dashboard</PageTitle>
 
 <div class="page">
-	<div class="page-shell">
-		<div class="hero-splash hero-splash-bg mb-4">
-			<div class="hero-grid">
-				<div class="hero-copy">
-					<div class="step-label mb-2">Family Rewards</div>
-					<h1 class="hero-title fw-bold">Build positive habits with clear, shared goals</h1>
-					<p class="text-muted mb-4">
-						Track good deeds, adjust points quickly, and keep every child focused on what matters. Sign in, link your parent account, and start logging deeds in minutes.
-					</p>
-					<div class="hero-actions">
-						@if (_parentId is null)
-						{
-							<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("settings")'>Get started</button>
-						}
-						else
-						{
-							<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
-						}
-						<button class="btn btn-outline-secondary btn-lg" @onclick='() => Navigation.NavigateTo("quickstart")'>Quick start</button>
-					</div>
-				</div>
-				<div class="hero-panel">
-					<h5 class="fw-semibold mb-3">Sign in with Microsoft</h5>
-					<p class="text-muted small mb-3">Use your Microsoft account to sync settings and keep your family data secure.</p>
+	<div class="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-4">
+		<div>
+			<div class="step-label mb-2">Family Rewards</div>
+			<h1 class="fw-bold mb-2">Dashboard</h1>
+			<p class="text-muted mb-0">
+				Track good deeds, adjust points quickly, and keep every child focused on what matters.
+			</p>
+		</div>
+		<div class="d-flex gap-2 flex-wrap">
+			@if (_parentId is null)
+			{
+				<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("settings")'>Get started</button>
+			}
+			else
+			{
+				<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
+			}
+			<button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("quickstart")'>Quick start</button>
+		</div>
+	</div>
+
+	<div class="row g-4 mb-4">
+		<div class="col-12 col-lg-7">
+			<div class="card card-elevated h-100">
+				<div class="card-body">
+					<h5 class="card-title">Sign in with Microsoft</h5>
+					<p class="text-muted">Use your Microsoft account to sync settings and keep your family data secure.</p>
 					@if (_authUser is null)
 					{
 						<a class="btn btn-primary w-100 mb-3" href="@LoginUrl">Continue with Microsoft</a>
@@ -42,19 +45,26 @@
 						<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
 						<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
 					}
-					<div class="onboard-grid mt-4">
-						<div class="step-card">
-							<div class="step-label mb-2">Step 1</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-12 col-lg-5">
+			<div class="card card-elevated h-100">
+				<div class="card-body">
+					<h5 class="card-title">Getting started</h5>
+					<div class="stack">
+						<div>
+							<div class="step-label mb-1">Step 1</div>
 							<div class="fw-semibold">Link existing parent email</div>
 							<div class="text-muted small">Keep your earlier history by linking the email you used before signing in.</div>
 						</div>
-						<div class="step-card">
-							<div class="step-label mb-2">Step 2</div>
+						<div>
+							<div class="step-label mb-1">Step 2</div>
 							<div class="fw-semibold">Add your children</div>
 							<div class="text-muted small">Set point values and reward rates in minutes.</div>
 						</div>
-						<div class="step-card">
-							<div class="step-label mb-2">Step 3</div>
+						<div>
+							<div class="step-label mb-1">Step 3</div>
 							<div class="fw-semibold">Log a deed</div>
 							<div class="text-muted small">Track progress and balances instantly.</div>
 						</div>
@@ -62,6 +72,7 @@
 				</div>
 			</div>
 		</div>
+	</div>
 
 		@if (_isLoading)
 		{
@@ -147,7 +158,6 @@
 				</div>
 			</div>
 		}
-	</div>
 </div>
 
 @code {

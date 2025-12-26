@@ -342,93 +342,6 @@ code {
     background-color: #d8f0e6;
 }
 
-.page-shell {
-    position: relative;
-    padding: 0 0 3rem;
-}
-
-.page-shell::before,
-.page-shell::after {
-    content: "";
-    position: absolute;
-    width: 320px;
-    height: 320px;
-    border-radius: 999px;
-    filter: blur(60px);
-    opacity: 0.45;
-    z-index: 0;
-}
-
-.page-shell::before {
-    top: -120px;
-    right: -40px;
-    background: rgba(99, 102, 241, 0.3);
-}
-
-.page-shell::after {
-    bottom: -140px;
-    left: -40px;
-    background: rgba(34, 197, 94, 0.2);
-}
-
-.hero-splash {
-    position: relative;
-    z-index: 1;
-    background: linear-gradient(135deg, #0f172a 0%, #0b1021 100%);
-    border-radius: 0;
-    padding: 3rem 2.5rem;
-    border: none;
-    box-shadow: none;
-}
-
-.hero-splash-bg {
-    background:
-        url('/img/background.png') left center / contain no-repeat,
-        linear-gradient(135deg, #0f172a 0%, #0b1021 100%);
-}
-
-.hero-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 2rem;
-    align-items: center;
-}
-
-.hero-copy {
-    max-width: 560px;
-}
-
-.hero-title {
-    font-size: clamp(2rem, 2.8vw, 3rem);
-    line-height: 1.1;
-}
-
-.hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-}
-
-.hero-panel {
-    background: rgba(15, 23, 42, 0.88);
-    border: 1px solid var(--page-border);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-}
-
-.onboard-grid {
-    display: grid;
-    gap: 1rem;
-}
-
-.step-card {
-    background: var(--page-surface-soft);
-    border: 1px solid var(--page-border);
-    border-radius: 1rem;
-    padding: 1rem 1.25rem;
-}
-
 .step-label {
     font-size: 0.75rem;
     letter-spacing: 0.2em;
@@ -473,17 +386,5 @@ textarea,
 
     .content {
         padding: 24px 20px;
-    }
-}
-
-@media (max-width: 768px) {
-    .hero-splash {
-        padding: 2rem 1.5rem;
-    }
-
-    .hero-splash-bg {
-        background:
-            url('/img/background.png') center top / cover no-repeat,
-            linear-gradient(135deg, #0f172a 0%, #0b1021 100%);
     }
 }
