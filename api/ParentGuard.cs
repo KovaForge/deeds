@@ -112,6 +112,7 @@ public static class ParentGuard
 
     public static bool TryEnsureParent(HttpRequestData req, string connectionString, Guid expectedParent, out HttpResponseData? errorResponse)
     {
+        errorResponse = null;
         var principal = GetPrincipal(req);
         if (principal.IsAuthenticated)
         {
