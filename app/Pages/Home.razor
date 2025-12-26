@@ -1,17 +1,66 @@
 ﻿@page "/"
 
 @inject ApiClient ApiClient
+@inject AuthService Auth
 @inject UserSettingsService Settings
 @inject NavigationManager Navigation
 
 <PageTitle>Dashboard</PageTitle>
 
-<div class="hero-card mb-4">
-	<h1 class="display-6 fw-bold">Track every good deed with ease</h1>
-	<p class="text-muted mb-4">
-		Watch your children build healthy habits, reward positive behaviour, and stay on top of redemptions – all synced with your Good Deeds API.
-	</p>
-	<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("children")'>Manage Children</button>
+<div class="page-shell">
+	<div class="hero-splash hero-splash-bg mb-4">
+		<div class="hero-grid">
+			<div class="hero-copy">
+				<div class="step-label mb-2">Family Rewards</div>
+				<h1 class="hero-title fw-bold">Build positive habits with clear, shared goals</h1>
+				<p class="text-muted mb-4">
+					Track good deeds, adjust points quickly, and keep every child focused on what matters. Sign in, link your parent account, and start logging deeds in minutes.
+				</p>
+				<div class="hero-actions">
+					@if (_parentId is null)
+					{
+						<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("settings")'>Get started</button>
+					}
+					else
+					{
+						<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
+					}
+					<button class="btn btn-outline-secondary btn-lg" @onclick='() => Navigation.NavigateTo("quickstart")'>Quick start</button>
+				</div>
+			</div>
+			<div class="hero-panel">
+				<h5 class="fw-semibold mb-3">Sign in with Microsoft</h5>
+				<p class="text-muted small mb-3">Use your Microsoft account to sync settings and keep your family data secure.</p>
+				@if (_authUser is null)
+				{
+					<a class="btn btn-primary w-100 mb-3" href="@LoginUrl">Continue with Microsoft</a>
+					<div class="text-muted small">Already have a parent email saved? Link it in <a href="settings">Settings</a> after signing in.</div>
+				}
+				else
+				{
+					<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
+					<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
+				}
+				<div class="onboard-grid mt-4">
+					<div class="step-card">
+						<div class="step-label mb-2">Step 1</div>
+						<div class="fw-semibold">Link existing parent email</div>
+						<div class="text-muted small">Keep your earlier history by linking the email you used before signing in.</div>
+					</div>
+					<div class="step-card">
+						<div class="step-label mb-2">Step 2</div>
+						<div class="fw-semibold">Add your children</div>
+						<div class="text-muted small">Set point values and reward rates in minutes.</div>
+					</div>
+					<div class="step-card">
+						<div class="step-label mb-2">Step 3</div>
+						<div class="fw-semibold">Log a deed</div>
+						<div class="text-muted small">Track progress and balances instantly.</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 @if (_isLoading)
@@ -20,17 +69,24 @@
 }
 else if (_parentId is null)
 {
-	<div class="alert alert-info glass-panel">
-		<strong>Let’s get you set up.</strong>
-		<div class="mt-2">Head over to <a href="settings">Settings</a> to connect your parent account before managing children and deeds.</div>
+	<div class="glass-panel p-4">
+		<h5 class="fw-semibold mb-2">You're almost ready</h5>
+		<p class="text-muted mb-3">Connect your parent account to load children, deeds, and balances.</p>
+		<div class="d-flex flex-wrap gap-2">
+			<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("settings")'>Open settings</button>
+			@if (_authUser is null)
+			{
+				<a class="btn btn-outline-secondary" href="@LoginUrl">Sign in with Microsoft</a>
+			}
+		</div>
 	</div>
 }
 else if (_children.Count == 0)
 {
-	<div class="glass-panel p-4 text-center">
+	<div class="card card-elevated p-4 text-center">
 		<h5 class="fw-semibold mb-2">No children added yet</h5>
 		<p class="text-muted">Add your first child to start tracking deeds and balances.</p>
-	<button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
+		<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
 	</div>
 }
 else
@@ -72,6 +128,7 @@ else
 
 @code {
 	private Guid? _parentId;
+	private AuthUser? _authUser;
 	private bool _isLoading = true;
 	private readonly List<ChildSummary> _children = [];
 	private int _totalPoints;
@@ -79,6 +136,7 @@ else
 
 	protected override async Task OnInitializedAsync()
 	{
+		_authUser = await Auth.GetUserAsync();
 		_parentId = await Settings.GetParentIdAsync();
 		if (_parentId is null)
 		{
@@ -121,4 +179,20 @@ else
 	}
 
 	private sealed record ChildSummary(Guid Id, string Name, int Points, decimal Dollars, int DeedsCount);
+
+	private string LoginUrl => $"/.auth/login/aad?post_login_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
+
+	private string ReturnPath
+	{
+		get
+		{
+			var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+			if (string.IsNullOrWhiteSpace(relative))
+			{
+				return "/";
+			}
+
+			return relative.StartsWith('/') ? relative : $"/{relative}";
+		}
+	}
 }
