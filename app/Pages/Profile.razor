@@ -37,7 +37,7 @@
                         <div class="form-text">Pick something unique so your email isn't duplicated in the sidebar.</div>
                     </div>
                     <button class="btn btn-primary" type="button" @onclick="SaveDisplayNameAsync" disabled="@_savingName">
-                        @_savingName ? "Saving..." : "Save display name"
+                        @(_savingName ? "Saving..." : "Save display name")
                     </button>
                 </div>
             </div>
@@ -67,7 +67,7 @@
                         }
                     </div>
                     <button class="btn btn-primary" type="button" @onclick="AcceptInviteAsync" disabled="@(_accepting || string.IsNullOrWhiteSpace(_acceptToken) || _authUser is null)">
-                        @_accepting ? "Linking..." : "Accept invite"
+                        @(_accepting ? "Linking..." : "Accept invite")
                     </button>
                 </div>
             </div>
@@ -103,7 +103,7 @@
                             </div>
                             <div class="col-12 col-md-2 d-grid">
                                 <button class="btn btn-primary" type="button" @onclick="CreateInviteAsync" disabled="@(_inviteLoading || string.IsNullOrWhiteSpace(_inviteEmail))">
-                                    @_inviteLoading ? "Working..." : "Share"
+                                    @(_inviteLoading ? "Working..." : "Share")
                                 </button>
                             </div>
                         </div>
