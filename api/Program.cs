@@ -36,6 +36,7 @@ else
     {
         var sqlFolder = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty, "sql");
         await Migrations.ApplyAsync(dbOptions.ConnectionString, sqlFolder, logger);
+        await Data.EnsureSchema(dbOptions.ConnectionString);
         logger.LogInformation("Database initialized successfully.");
     }
     catch (Exception ex)
