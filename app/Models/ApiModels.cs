@@ -23,3 +23,4 @@ public record ErrorResponse(string Error);
 public record AiKeyStatusDto(bool HasKey);
 public record AiKeyRequest(string ApiKey);
 public record LinkParentRequest(string Email);
+public record ChildWithBalanceDto(Guid Id, Guid ParentId, string Name, decimal DollarPerPoint, int Points, decimal Dollars);

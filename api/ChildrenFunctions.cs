@@ -102,6 +102,35 @@ public class ChildrenFunctions
         }
     }
 
+    [Function("ListChildrenWithBalances")]
+    public async Task<HttpResponseData> ListChildrenWithBalances(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/{parentId:guid}/children/with-balances")] HttpRequestData req,
+        Guid parentId)
+    {
+        if (!ParentGuard.TryEnsureParent(req, _cs, parentId, out var guardError))
+        {
+            return guardError!;
+        }
+
+        var parent = await Data.GetParentById(_cs, parentId);
+        if (parent is null)
+        {
+            return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        try
+        {
+            var children = await Data.GetChildrenWithBalances(_cs, parentId);
+            var res = req.CreateResponse(HttpStatusCode.OK);
+            await res.WriteAsJsonAsync(children);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to list children with balances: {ex.Message}");
+        }
+    }
+
     [Function("UpdateChild")]
     public async Task<HttpResponseData> UpdateChild(
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", "patch", Route = "children/{childId:guid}")] HttpRequestData req,

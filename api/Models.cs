@@ -15,6 +15,7 @@ public record BalanceDto(Guid ChildId, int Points, decimal Dollars);
 public record CreateRedemption(Guid ParentId, Guid ChildId, int Points, string? Description, string? CreatedBy);
 public record RedemptionDto(Guid Id, Guid ChildId, int Points, string? Description, DateTimeOffset CreatedAt, string CreatedBy);
 public record ChildHistoryRow(string EntryType, int Points, decimal DollarValue, string? Note, DateTimeOffset OccurredAt, string RecordedBy);
+public record ChildWithBalanceDto(Guid Id, Guid ParentId, string Name, decimal DollarPerPoint, int Points, decimal Dollars);
 
 public record AiSuggestRequest(string DeedTypeName, string Condition, bool IsPositive);
 public record AiSuggestResponse(int Points, string Reason);

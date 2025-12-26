@@ -304,6 +304,27 @@ public class ApiClient
         throw new InvalidOperationException(error ?? "Unable to load redemptions");
     }
 
+    public async Task<IReadOnlyList<ChildWithBalanceDto>> GetChildrenWithBalancesAsync(Guid parentId)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, $"parents/{parentId}/children/with-balances");
+        req.Headers.Add("x-parent-id", parentId.ToString());
+        var res = await _http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            var items = await res.Content.ReadFromJsonAsync<List<ChildWithBalanceDto>>();
+            return items ?? new List<ChildWithBalanceDto>();
+        }
+
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<ChildWithBalanceDto>();
+        }
+
+        var error = await ReadErrorAsync(res);
+        var message = error ?? $"Unable to load children with balances (Status: {(int)res.StatusCode} {res.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
     public async Task<AiKeyStatusDto> GetAiKeyStatusAsync()
     {
         var response = await _http.GetAsync("ai/key");

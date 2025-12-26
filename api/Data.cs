@@ -397,6 +397,34 @@ order by occurred_at;";
     return await db.QueryAsync<ChildHistoryRow>(sql, new { ChildId = childId });
   }
 
+  public static async Task<IEnumerable<ChildWithBalanceDto>> GetChildrenWithBalances(string cs, Guid parentId)
+  {
+    const string sql = @"
+select
+  c.id as Id,
+  c.parent_id as ParentId,
+  c.name as Name,
+  c.dollar_per_point as DollarPerPoint,
+  (coalesce(d.points, 0) - coalesce(r.points, 0))::integer as Points,
+  (coalesce(d.points, 0) - coalesce(r.points, 0)) * c.dollar_per_point as Dollars
+from children c
+left join (
+  select child_id, sum(points)::integer as points
+  from deeds
+  group by child_id
+) d on d.child_id = c.id
+left join (
+  select child_id, sum(points)::integer as points
+  from redemptions
+  group by child_id
+) r on r.child_id = c.id
+where c.parent_id = @ParentId
+order by c.created_date;";
+
+    await using var db = Conn(cs);
+    return await db.QueryAsync<ChildWithBalanceDto>(sql, new { ParentId = parentId });
+  }
+
   public static async Task<AiKeyRecord?> GetAiKeyForParent(string cs, Guid parentId)
   {
     const string sql = @"
