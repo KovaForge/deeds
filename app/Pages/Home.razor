@@ -24,7 +24,7 @@
 			}
 			else
 			{
-				<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
+				<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Manage children</button>
 			}
 		</div>
 	</div>
@@ -167,6 +167,7 @@
 	private readonly List<ChildSummary> _children = [];
 	private bool _authRefreshed;
 	private bool _autoLinkAttempted;
+	private readonly SemaphoreSlim _loadGate = new(1, 1);
 
     protected override async Task OnInitializedAsync()
     {
@@ -217,68 +218,76 @@
 
     private async Task LoadDashboardAsync()
     {
-        if (_parentId is null)
+        await _loadGate.WaitAsync();
+        try
         {
-            _isLoading = false;
+            if (_parentId is null)
+            {
+                _isLoading = false;
+                _loadError = false;
+                return;
+            }
+
+            _isLoading = true;
             _loadError = false;
-            return;
-        }
-
-		_isLoading = true;
-		_loadError = false;
-		_linkRequired = false;
-		_loadErrorMessage = null;
-		_children.Clear();
-		try
-		{
-			var children = await ApiClient.GetChildrenAsync(_parentId.Value);
-            var seenChildIds = new HashSet<Guid>();
-			foreach (var child in children)
-			{
-                if (!seenChildIds.Add(child.Id))
+            _linkRequired = false;
+            _loadErrorMessage = null;
+            _children.Clear();
+            try
+            {
+                var children = await ApiClient.GetChildrenAsync(_parentId.Value);
+                var seenChildIds = new HashSet<Guid>();
+                foreach (var child in children)
                 {
-                    continue;
+                    if (!seenChildIds.Add(child.Id))
+                    {
+                        continue;
+                    }
+
+                    BalanceDto? balance = null;
+                    IReadOnlyList<DeedDto> deeds = Array.Empty<DeedDto>();
+
+                    try
+                    {
+                        balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId.Value);
+                    }
+                    catch (Exception balanceEx)
+                    {
+                        Console.WriteLine($"Dashboard balance error: {balanceEx.Message}");
+                    }
+
+                    try
+                    {
+                        deeds = await ApiClient.GetDeedsForChildAsync(child.Id, _parentId.Value);
+                    }
+                    catch (Exception deedEx)
+                    {
+                        Console.WriteLine($"Dashboard deeds error: {deedEx.Message}");
+                    }
+
+                    var points = balance?.Points ?? 0;
+                    var dollars = balance?.Dollars ?? 0m;
+                    _children.Add(new ChildSummary(child.Id, child.Name, points, dollars, deeds.Count));
                 }
-
-				BalanceDto? balance = null;
-				IReadOnlyList<DeedDto> deeds = Array.Empty<DeedDto>();
-
-				try
-				{
-					balance = await ApiClient.GetChildBalanceAsync(child.Id, _parentId.Value);
-				}
-				catch (Exception balanceEx)
-				{
-					Console.WriteLine($"Dashboard balance error: {balanceEx.Message}");
-				}
-
-				try
-				{
-					deeds = await ApiClient.GetDeedsForChildAsync(child.Id, _parentId.Value);
-				}
-				catch (Exception deedEx)
-				{
-					Console.WriteLine($"Dashboard deeds error: {deedEx.Message}");
-				}
-
-				var points = balance?.Points ?? 0;
-				var dollars = balance?.Dollars ?? 0m;
-				_children.Add(new ChildSummary(child.Id, child.Name, points, dollars, deeds.Count));
-			}
-		}
-		catch (Exception ex)
-		{
-			_loadError = true;
-			_loadErrorMessage = ex.Message;
-			if (ex.Message.Contains("ParentId does not match authenticated user", StringComparison.OrdinalIgnoreCase))
-			{
-				_linkRequired = true;
-			}
-			Console.WriteLine($"Dashboard error: {ex.Message}");
-		}
+            }
+            catch (Exception ex)
+            {
+                _loadError = true;
+                _loadErrorMessage = ex.Message;
+                if (ex.Message.Contains("ParentId does not match authenticated user", StringComparison.OrdinalIgnoreCase))
+                {
+                    _linkRequired = true;
+                }
+                Console.WriteLine($"Dashboard error: {ex.Message}");
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
         finally
         {
-            _isLoading = false;
+            _loadGate.Release();
         }
     }
 
