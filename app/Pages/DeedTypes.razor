@@ -5,88 +5,91 @@
 
 <PageTitle>Deed Types</PageTitle>
 
-<h2 class="fw-bold mb-3">Deed Types</h2>
-<p class="text-muted">Create deed templates with positive or negative points, then reuse them when logging deeds for each child.</p>
+<div class="page">
+    <h2 class="fw-bold mb-3">Deed Types</h2>
+    <p class="text-muted">Create deed templates with positive or negative points, then reuse them when logging deeds for each child.</p>
 
-@if (_isLoading)
-{
-    <div class="text-muted">Loading deed types…</div>
-}
-else if (_parentId is null)
-{
-    <div class="alert alert-info glass-panel">
-        Configure your parent account in <a href="/settings">Settings</a> first.
-    </div>
-}
-else
-{
-    <div class="row g-4">
-        <div class="col-12 col-lg-7">
-            <div class="card card-elevated">
-                <div class="card-body">
-                    <h5 class="card-title">Saved deed types</h5>
-                    @if (_deedTypes.Count == 0)
-                    {
-                        <p class="text-muted mb-0">No deed types yet. Add your first one using the form.</p>
-                    }
-                    else
-                    {
-                        <div class="list-group list-group-flush">
-                            @foreach (var deed in _deedTypes)
-                            {
-                                <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-3">
-                                    <div>
-                                        <div class="fw-semibold">@deed.Name</div>
-                                        <span class="badge @(deed.Points >= 0 ? "badge-good" : "badge-bad")">@(deed.Points >= 0 ? "Good" : "Bad") deed</span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="fw-semibold @(deed.Points >= 0 ? "points-positive" : "points-negative")">
-                                            @(deed.Points >= 0 ? "+" : string.Empty)@deed.Points pts
+    @if (_isLoading)
+    {
+        <div class="text-muted">Loading deed types.</div>
+    }
+    else if (_parentId is null)
+    {
+        <div class="alert alert-info glass-panel">
+            Configure your parent account in <a href="/settings">Settings</a> first.
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Saved deed types</h5>
+                        @if (_deedTypes.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No deed types yet. Add your first one using the form.</p>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var deed in _deedTypes)
+                                {
+                                    <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                        <div>
+                                            <div class="fw-semibold">@deed.Name</div>
+                                            <span class="badge @(deed.Points >= 0 ? "badge-good" : "badge-bad")">@(deed.Points >= 0 ? "Good" : "Bad") deed</span>
                                         </div>
-                                        <button class="btn btn-link text-danger" @onclick='() => DeleteDeedTypeAsync(deed.Id)'>Remove</button>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="fw-semibold @(deed.Points >= 0 ? "points-positive" : "points-negative")">
+                                                @(deed.Points >= 0 ? "+" : string.Empty)@deed.Points pts
+                                            </div>
+                                            <button class="btn btn-link text-danger" @onclick='() => DeleteDeedTypeAsync(deed.Id)'>Remove</button>
+                                        </div>
                                     </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-5">
-            <div class="card card-elevated">
-                <div class="card-body">
-                    <h5 class="card-title">Add a deed type</h5>
-                    <EditForm Model="_form" OnValidSubmit="CreateDeedTypeAsync">
-                        <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <InputText class="form-control" @bind-Value="_form.Name" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Deed nature</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="kind" id="good" checked="@_form.IsGood" @onchange="() => SetGood(true)" />
-                                <label class="btn btn-outline-success" for="good">Good deed</label>
-                                <input type="radio" class="btn-check" name="kind" id="bad" checked="@(!_form.IsGood)" @onchange="() => SetGood(false)" />
-                                <label class="btn btn-outline-danger" for="bad">Bad deed</label>
+                                }
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Points</label>
-                            <InputNumber class="form-control" @bind-Value="_form.Points" />
-                            <div class="form-text">Positive points reward a good deed; negative points penalise a bad one.</div>
-                        </div>
-                        <button class="btn btn-primary w-100" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving…" : "Create deed type")</button>
-                    </EditForm>
-                    @if (!string.IsNullOrWhiteSpace(_feedback))
-                    {
-                        <div class="alert alert-warning mt-3">@_feedback</div>
-                    }
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-5">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Add a deed type</h5>
+                        <EditForm Model="_form" OnValidSubmit="CreateDeedTypeAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <InputText class="form-control" @bind-Value="_form.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Deed nature</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="kind" id="good" checked="@_form.IsGood" @onchange="() => SetGood(true)" />
+                                    <label class="btn btn-outline-success" for="good">Good deed</label>
+                                    <input type="radio" class="btn-check" name="kind" id="bad" checked="@(!_form.IsGood)" @onchange="() => SetGood(false)" />
+                                    <label class="btn btn-outline-danger" for="bad">Bad deed</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Points</label>
+                                <InputNumber class="form-control" @bind-Value="_form.Points" />
+                                <div class="form-text">Positive points reward a good deed; negative points penalise a bad one.</div>
+                            </div>
+                            <button class="btn btn-primary w-100" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving." : "Create deed type")</button>
+                        </EditForm>
+                        @if (!string.IsNullOrWhiteSpace(_feedback))
+                        {
+                            <div class="alert alert-warning mt-3">@_feedback</div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 }
+</div>
 
 @code {
     private Guid? _parentId;

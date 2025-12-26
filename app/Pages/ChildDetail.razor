@@ -8,136 +8,139 @@
 
 <PageTitle>Child Profile</PageTitle>
 
-@if (_isLoading)
-{
-    <p class="text-muted">Loading child profile…</p>
-}
-else if (_parentId is null)
-{
-    <div class="alert alert-info glass-panel">
-        Configure your parent account in <a href="/settings">Settings</a> to manage deeds.
-    </div>
-}
-else if (_child is null)
-{
-    <div class="alert alert-warning glass-panel">
-        Child not found. <a href="/children">Back to children</a>
-    </div>
-}
-else
-{
-    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
-        <div>
-            <h2 class="fw-bold mb-1">@_child.Name</h2>
-            <div class="text-muted">Reward rate $@(_child.DollarPerPoint.ToString("F2")) per point</div>
+<div class="page">
+    @if (_isLoading)
+    {
+        <p class="text-muted">Loading child profile.</p>
+    }
+    else if (_parentId is null)
+    {
+        <div class="alert alert-info glass-panel">
+            Configure your parent account in <a href="/settings">Settings</a> to manage deeds.
         </div>
-    <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/children")'>Back to list</button>
-    </div>
+    }
+    else if (_child is null)
+    {
+        <div class="alert alert-warning glass-panel">
+            Child not found. <a href="/children">Back to children</a>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <h2 class="fw-bold mb-1">@_child.Name</h2>
+                <div class="text-muted">Reward rate $@(_child.DollarPerPoint.ToString("F2")) per point</div>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/children")'>Back to list</button>
+        </div>
 
-    <div class="row g-4">
-        <div class="col-12 col-lg-5">
-            <div class="card card-elevated mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Balance</h5>
-                    <p class="display-6 fw-bold @(BalanceClass)">@(_balance?.Points ?? 0) pts</p>
-                    <p class="text-muted mb-0">$@((_balance?.Dollars ?? 0m).ToString("F2")) total value</p>
+        <div class="row g-4">
+            <div class="col-12 col-lg-5">
+                <div class="card card-elevated mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Balance</h5>
+                        <p class="display-6 fw-bold @(BalanceClass)">@(_balance?.Points ?? 0) pts</p>
+                        <p class="text-muted mb-0">$@((_balance?.Dollars ?? 0m).ToString("F2")) total value</p>
+                    </div>
+                </div>
+
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Log a new deed</h5>
+                        <EditForm Model="_form" OnValidSubmit="CreateDeedAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label">Deed type</label>
+                                @if (_deedTypes.Count == 0)
+                                {
+                                    <div class="alert alert-warning">
+                                        No deed types available yet. Add them in <a href="/deeds">Deed Types</a>.
+                                    </div>
+                                }
+                                else
+                                {
+                                    <select class="form-select" @onchange="OnDeedTypeChanged">
+                                        <option value="">Select a deed type</option>
+                                        @foreach (var deedType in _deedTypes)
+                                        {
+                                            <option value="@deedType.Id" selected="@(deedType.Id == _form.DeedTypeId)">@deedType.Name (@(deedType.Points >= 0 ? "+" : string.Empty)@deedType.Points pts)</option>
+                                        }
+                                    </select>
+                                }
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Condition or details</label>
+                                <InputTextArea class="form-control" @bind-Value="_form.Condition" rows="2" placeholder="Describe the specific incident, e.g., 'Did it on first ask without complaining'" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Points (@(_form.Points >= 0 ? "+" : string.Empty)@_form.Points mins)</label>
+                                <InputNumber class="form-control" @bind-Value="_form.Points" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Additional notes (optional)</label>
+                                <InputTextArea class="form-control" @bind-Value="_form.Note" rows="2" />
+                            </div>
+                            <div class="d-flex gap-2 mb-3">
+                                <button type="button" class="btn btn-outline-secondary flex-grow-1" @onclick="SuggestPointsAsync" disabled="@(_isSuggesting || _form.DeedTypeId == Guid.Empty || string.IsNullOrWhiteSpace(_form.Condition))">@(_isSuggesting ? "Contacting AI…" : "Ask AI to adjust points")</button>
+                                <button class="btn btn-primary flex-grow-1" type="submit" disabled="@(_isSubmitting || _form.DeedTypeId == Guid.Empty || _deedTypes.Count == 0)">@(_isSubmitting ? "Saving…" : "Add deed")</button>
+                            </div>
+                        </EditForm>
+                        @if (!string.IsNullOrWhiteSpace(_feedback))
+                        {
+                            <div class="alert alert-warning mt-3">@_feedback</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_suggestionReason))
+                        {
+                            <div class="alert alert-info mt-3">
+                                <strong>AI suggestion:</strong>
+                                <div>@_suggestionReason</div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
-
-            <div class="card card-elevated">
-                <div class="card-body">
-                    <h5 class="card-title">Log a new deed</h5>
-                    <EditForm Model="_form" OnValidSubmit="CreateDeedAsync">
-                        <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label class="form-label">Deed type</label>
-                            @if (_deedTypes.Count == 0)
-                            {
-                                <div class="alert alert-warning">
-                                    No deed types available yet. Add them in <a href="/deeds">Deed Types</a>.
-                                </div>
-                            }
-                            else
-                            {
-                                <select class="form-select" @onchange="OnDeedTypeChanged">
-                                    <option value="">Select a deed type</option>
-                                    @foreach (var deedType in _deedTypes)
-                                    {
-                                        <option value="@deedType.Id" selected="@(deedType.Id == _form.DeedTypeId)">@deedType.Name (@(deedType.Points >= 0 ? "+" : string.Empty)@deedType.Points pts)</option>
-                                    }
-                                </select>
-                            }
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Condition or details</label>
-                            <InputTextArea class="form-control" @bind-Value="_form.Condition" rows="2" placeholder="Describe the specific incident, e.g., 'Did it on first ask without complaining'" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Points (@(_form.Points >= 0 ? "+" : string.Empty)@_form.Points mins)</label>
-                            <InputNumber class="form-control" @bind-Value="_form.Points" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Additional notes (optional)</label>
-                            <InputTextArea class="form-control" @bind-Value="_form.Note" rows="2" />
-                        </div>
-                        <div class="d-flex gap-2 mb-3">
-                            <button type="button" class="btn btn-outline-secondary flex-grow-1" @onclick="SuggestPointsAsync" disabled="@(_isSuggesting || _form.DeedTypeId == Guid.Empty || string.IsNullOrWhiteSpace(_form.Condition))">@(_isSuggesting ? "Contacting AI…" : "Ask AI to adjust points")</button>
-                            <button class="btn btn-primary flex-grow-1" type="submit" disabled="@(_isSubmitting || _form.DeedTypeId == Guid.Empty || _deedTypes.Count == 0)">@(_isSubmitting ? "Saving…" : "Add deed")</button>
-                        </div>
-                    </EditForm>
-                    @if (!string.IsNullOrWhiteSpace(_feedback))
-                    {
-                        <div class="alert alert-warning mt-3">@_feedback</div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_suggestionReason))
-                    {
-                        <div class="alert alert-info mt-3">
-                            <strong>AI suggestion:</strong>
-                            <div>@_suggestionReason</div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-7">
-            <div class="card card-elevated">
-                <div class="card-body">
-                    <h5 class="card-title">Deed history</h5>
-                    @if (_deeds.Count == 0)
-                    {
-                        <p class="text-muted mb-0">No deeds logged yet. Add one using the form.</p>
-                    }
-                    else
-                    {
-                        <div class="list-group list-group-flush">
-                            @foreach (var deed in _deeds)
-                            {
-                                <div class="list-group-item">
-                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                                        <div>
-                                            <div class="fw-semibold">@DeedTypeName(deed.DeedTypeId)</div>
-                                            <div class="small text-muted">@deed.OccurredAt.ToLocalTime().ToString("g")</div>
-                                            @if (!string.IsNullOrWhiteSpace(deed.Note))
-                                            {
-                                                <div class="mt-2">@deed.Note</div>
-                                            }
-                                        </div>
-                                        <div class="text-end">
-                                            <div class="fw-semibold @(deed.Points >= 0 ? "points-positive" : "points-negative")">
-                                                @(deed.Points >= 0 ? "+" : string.Empty)@deed.Points mins
+            <div class="col-12 col-lg-7">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Deed history</h5>
+                        @if (_deeds.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No deeds logged yet. Add one using the form.</p>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var deed in _deeds)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                            <div>
+                                                <div class="fw-semibold">@DeedTypeName(deed.DeedTypeId)</div>
+                                                <div class="small text-muted">@deed.OccurredAt.ToLocalTime().ToString("g")</div>
+                                                @if (!string.IsNullOrWhiteSpace(deed.Note))
+                                                {
+                                                    <div class="mt-2">@deed.Note</div>
+                                                }
                                             </div>
-                                            <button class="btn btn-link text-danger p-0" @onclick='() => DeleteDeedAsync(deed.Id)'>Remove</button>
+                                            <div class="text-end">
+                                                <div class="fw-semibold @(deed.Points >= 0 ? "points-positive" : "points-negative")">
+                                                    @(deed.Points >= 0 ? "+" : string.Empty)@deed.Points mins
+                                                </div>
+                                                <button class="btn btn-link text-danger p-0" @onclick='() => DeleteDeedAsync(deed.Id)'>Remove</button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            }
-                        </div>
-                    }
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 }
+</div>
 
 @code {
     [Parameter] public Guid ChildId { get; set; }
@@ -216,7 +219,7 @@ else
 
             _balance = await ApiClient.GetChildBalanceAsync(ChildId, parentId);
             _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
-            
+
             try
             {
                 _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
@@ -294,12 +297,11 @@ else
             {
                 note = $"{_form.Condition}\n\n{_form.Note.Trim()}";
             }
-            
+
             await ApiClient.CreateDeedAsync(_parentId.Value, ChildId, _form.DeedTypeId, _form.Points, note, ResolveCreatedBy());
             _form.Condition = string.Empty;
             _form.Note = string.Empty;
             _suggestionReason = null;
-            // Reset to first deed type after saving
             if (_deedTypes.Count > 0)
             {
                 _form.DeedTypeId = _deedTypes.First().Id;

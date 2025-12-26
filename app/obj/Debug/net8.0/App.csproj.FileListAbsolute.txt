@@ -2065,9 +2065,6 @@ C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\2s
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\ol9d875hjq-{0}-tptq2av103-tptq2av103.gz
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\rgjkfi8ufe-{0}-lfu7j35m59-lfu7j35m59.gz
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\47zfde0nbw-{0}-oyz0vx2fzb-oyz0vx2fzb.gz
-C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\7n82l5oxm6-{0}-9vozty734u-9vozty734u.gz
-C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\6kn7dxqbt2-{0}-wh5li7b8x7-wh5li7b8x7.gz
-C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\9e6ghiqx7g-{0}-xbgqcr760i-xbgqcr760i.gz
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\staticwebassets.build.json.cache
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\staticwebassets.development.json
@@ -2078,3 +2075,6 @@ C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\App.dll
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\refint\App.dll
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\App.pdb
 C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\ref\App.dll
+C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\7n82l5oxm6-{0}-nt2tehta1y-nt2tehta1y.gz
+C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\6kn7dxqbt2-{0}-khuy5zd5qy-khuy5zd5qy.gz
+C:\Users\liveu\source\repos\McoreD\good-deeds\app\obj\Debug\net8.0\compressed\9e6ghiqx7g-{0}-j3kqwhjslq-j3kqwhjslq.gz

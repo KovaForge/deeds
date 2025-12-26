@@ -60,6 +60,10 @@ a, .btn-link {
     color: var(--page-muted) !important;
 }
 
+.muted {
+    color: var(--page-muted);
+}
+
 .btn-primary {
     color: #0b1021;
     background-image: linear-gradient(120deg, var(--page-accent), var(--page-accent-strong));
@@ -166,6 +170,19 @@ a, .btn-link {
 .auth-user {
     font-size: 0.9rem;
     color: var(--page-muted);
+}
+
+.signout {
+    border: 1px solid var(--page-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #e2e8f0;
+    text-align: center;
+    display: block;
+}
+
+.signout:hover {
+    background: rgba(99, 102, 241, 0.15);
 }
 
 .page {

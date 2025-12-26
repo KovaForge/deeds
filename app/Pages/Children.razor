@@ -6,82 +6,85 @@
 
 <PageTitle>Children</PageTitle>
 
-<div class="d-flex align-items-center mb-3">
-    <h2 class="fw-bold mb-0">Children</h2>
-    <a href="settings" class="btn btn-outline-secondary btn-sm ms-auto">⚙️ Settings</a>
-</div>
-<p class="text-muted">Create profiles for each child, manage their reward rate, and jump into their deed history.</p>
+<div class="page">
+    <div class="d-flex align-items-center mb-3">
+        <h2 class="fw-bold mb-0">Children</h2>
+        <a href="settings" class="btn btn-outline-secondary btn-sm ms-auto">Settings</a>
+    </div>
+    <p class="text-muted">Create profiles for each child, manage their reward rate, and jump into their deed history.</p>
 
-@if (_isLoading)
-{
-    <div class="text-muted">Loading children…</div>
-}
-else if (_parentId is null)
-{
-    <div class="alert alert-info glass-panel">
-        Set up a parent account in <a href="settings">Settings</a> before adding children.
-    </div>
-}
-else
-{
-    <div class="row g-4">
-        <div class="col-12 col-lg-7">
-            <div class="card card-elevated">
-                <div class="card-body">
-                    <h5 class="card-title">Your children (@_children.Count)</h5>
-                    @if (_children.Count == 0)
-                    {
-                        <p class="text-muted mb-0">No children yet. Add one using the form on the right.</p>
-                    }
-                    else
-                    {
-                        <div class="list-group list-group-flush">
-                            @foreach (var child in _children)
-                            {
-                                <div class="list-group-item d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3">
-                                    <div class="flex-fill">
-                                        <div class="fw-semibold fs-5">@child.Child.Name</div>
-                                        <div class="text-muted small">Reward rate: @FormatCurrency(child.Child.DollarPerPoint) per point</div>
-                                        <div class="small">Balance: <span class="fw-semibold @(child.Balance.Points >= 0 ? "points-positive" : "points-negative")">@child.Balance.Points pts</span> • @FormatCurrency(child.Balance.Dollars)</div>
+    @if (_isLoading)
+    {
+        <div class="text-muted">Loading children.</div>
+    }
+    else if (_parentId is null)
+    {
+        <div class="alert alert-info glass-panel">
+            Set up a parent account in <a href="settings">Settings</a> before adding children.
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Your children (@_children.Count)</h5>
+                        @if (_children.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No children yet. Add one using the form on the right.</p>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var child in _children)
+                                {
+                                    <div class="list-group-item d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3">
+                                        <div class="flex-fill">
+                                            <div class="fw-semibold fs-5">@child.Child.Name</div>
+                                            <div class="text-muted small">Reward rate: @FormatCurrency(child.Child.DollarPerPoint) per point</div>
+                                            <div class="small">Balance: <span class="fw-semibold @(child.Balance.Points >= 0 ? "points-positive" : "points-negative")">@child.Balance.Points pts</span> @FormatCurrency(child.Balance.Dollars)</div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-outline-primary btn-sm" @onclick='() => Navigation.NavigateTo($"children/{child.Child.Id}")'>View profile</button>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick='() => ConfirmDelete(child.Child.Id)'>Remove</button>
+                                        </div>
                                     </div>
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-outline-primary btn-sm" @onclick='() => Navigation.NavigateTo($"children/{child.Child.Id}")'>View profile</button>
-                                        <button class="btn btn-outline-danger btn-sm" @onclick='() => ConfirmDelete(child.Child.Id)'>Remove</button>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-5">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Add a child</h5>
+                        <EditForm Model="_form" OnValidSubmit="CreateChildAsync">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <InputText class="form-control" @bind-Value="_form.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Dollar per point</label>
+                                <InputNumber class="form-control" @bind-Value="_form.DollarPerPoint" />
+                                <div class="form-text">Default is $1.00 per point.</div>
+                            </div>
+                            <button class="btn btn-primary w-100" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Creating." : "Add child")</button>
+                        </EditForm>
+                        @if (!string.IsNullOrWhiteSpace(_formFeedback))
+                        {
+                            <div class="alert alert-warning mt-3">@_formFeedback</div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-12 col-lg-5">
-            <div class="card card-elevated">
-                <div class="card-body">
-                    <h5 class="card-title">Add a child</h5>
-                    <EditForm Model="_form" OnValidSubmit="CreateChildAsync">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <InputText class="form-control" @bind-Value="_form.Name" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Dollar per point</label>
-                            <InputNumber class="form-control" @bind-Value="_form.DollarPerPoint" />
-                            <div class="form-text">Default is $1.00 per point.</div>
-                        </div>
-                        <button class="btn btn-primary w-100" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Creating…" : "Add child")</button>
-                    </EditForm>
-                    @if (!string.IsNullOrWhiteSpace(_formFeedback))
-                    {
-                        <div class="alert alert-warning mt-3">@_formFeedback</div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
+    }
 }
+</div>
 
 <ModalConfirmation Visible="@_showDeleteConfirm" Title="Remove child" OnConfirm="DeleteConfirmedAsync" OnCancel="HideDelete">
     <p class="mb-0">Are you sure you want to remove this child? Deeds, balances, and redemptions will be removed as well.</p>

@@ -7,145 +7,147 @@
 
 <PageTitle>Dashboard</PageTitle>
 
-<div class="page-shell">
-	<div class="hero-splash hero-splash-bg mb-4">
-		<div class="hero-grid">
-			<div class="hero-copy">
-				<div class="step-label mb-2">Family Rewards</div>
-				<h1 class="hero-title fw-bold">Build positive habits with clear, shared goals</h1>
-				<p class="text-muted mb-4">
-					Track good deeds, adjust points quickly, and keep every child focused on what matters. Sign in, link your parent account, and start logging deeds in minutes.
-				</p>
-				<div class="hero-actions">
-					@if (_parentId is null)
+<div class="page">
+	<div class="page-shell">
+		<div class="hero-splash hero-splash-bg mb-4">
+			<div class="hero-grid">
+				<div class="hero-copy">
+					<div class="step-label mb-2">Family Rewards</div>
+					<h1 class="hero-title fw-bold">Build positive habits with clear, shared goals</h1>
+					<p class="text-muted mb-4">
+						Track good deeds, adjust points quickly, and keep every child focused on what matters. Sign in, link your parent account, and start logging deeds in minutes.
+					</p>
+					<div class="hero-actions">
+						@if (_parentId is null)
+						{
+							<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("settings")'>Get started</button>
+						}
+						else
+						{
+							<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
+						}
+						<button class="btn btn-outline-secondary btn-lg" @onclick='() => Navigation.NavigateTo("quickstart")'>Quick start</button>
+					</div>
+				</div>
+				<div class="hero-panel">
+					<h5 class="fw-semibold mb-3">Sign in with Microsoft</h5>
+					<p class="text-muted small mb-3">Use your Microsoft account to sync settings and keep your family data secure.</p>
+					@if (_authUser is null)
 					{
-						<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("settings")'>Get started</button>
+						<a class="btn btn-primary w-100 mb-3" href="@LoginUrl">Continue with Microsoft</a>
+						<div class="text-muted small">Already have a parent email saved? Link it in <a href="settings">Settings</a> after signing in.</div>
 					}
 					else
 					{
-						<button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
+						<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
+						<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
 					}
-					<button class="btn btn-outline-secondary btn-lg" @onclick='() => Navigation.NavigateTo("quickstart")'>Quick start</button>
-				</div>
-			</div>
-			<div class="hero-panel">
-				<h5 class="fw-semibold mb-3">Sign in with Microsoft</h5>
-				<p class="text-muted small mb-3">Use your Microsoft account to sync settings and keep your family data secure.</p>
-				@if (_authUser is null)
-				{
-					<a class="btn btn-primary w-100 mb-3" href="@LoginUrl">Continue with Microsoft</a>
-					<div class="text-muted small">Already have a parent email saved? Link it in <a href="settings">Settings</a> after signing in.</div>
-				}
-				else
-				{
-					<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
-					<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
-				}
-				<div class="onboard-grid mt-4">
-					<div class="step-card">
-						<div class="step-label mb-2">Step 1</div>
-						<div class="fw-semibold">Link existing parent email</div>
-						<div class="text-muted small">Keep your earlier history by linking the email you used before signing in.</div>
-					</div>
-					<div class="step-card">
-						<div class="step-label mb-2">Step 2</div>
-						<div class="fw-semibold">Add your children</div>
-						<div class="text-muted small">Set point values and reward rates in minutes.</div>
-					</div>
-					<div class="step-card">
-						<div class="step-label mb-2">Step 3</div>
-						<div class="fw-semibold">Log a deed</div>
-						<div class="text-muted small">Track progress and balances instantly.</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	@if (_isLoading)
-	{
-		<div class="content-section text-center text-muted">Loading dashboard.</div>
-	}
-	else if (_parentId is null)
-	{
-		<div class="content-section">
-			<div class="card card-elevated">
-				<div class="card-body">
-					<h5 class="fw-semibold mb-2">You're almost ready</h5>
-					<p class="text-muted mb-3">Connect your parent account to load children, deeds, and balances.</p>
-					<div class="d-flex flex-wrap gap-2">
-						<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("settings")'>Open settings</button>
-						@if (_authUser is null)
-						{
-							<a class="btn btn-outline-secondary" href="@LoginUrl">Sign in with Microsoft</a>
-						}
-					</div>
-				</div>
-			</div>
-		</div>
-	}
-	else if (_loadError)
-	{
-		<div class="content-section">
-			<div class="card card-elevated">
-				<div class="card-body">
-					<h5 class="fw-semibold mb-2">We couldn't load your dashboard yet</h5>
-					<p class="text-muted mb-3">Finish signing in and try again in a moment.</p>
-					<button class="btn btn-primary" @onclick="LoadDashboardAsync">Retry loading</button>
-				</div>
-			</div>
-		</div>
-	}
-	else if (_children.Count == 0)
-	{
-		<div class="content-section">
-			<div class="card card-elevated text-center">
-				<div class="card-body">
-					<h5 class="fw-semibold mb-2">No children added yet</h5>
-					<p class="text-muted">Add your first child to start tracking deeds and balances.</p>
-					<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
-				</div>
-			</div>
-		</div>
-	}
-	else
-	{
-		<div class="content-section">
-			<div class="row g-4">
-				<div class="col-12 col-lg-4">
-					<div class="card card-elevated h-100">
-						<div class="card-body">
-							<h5 class="card-title">Total Family Balance</h5>
-							<p class="display-6 fw-bold">@_totalPoints pts</p>
-							<p class="text-muted mb-0">Equivalent to $@_totalDollars.ToString("F2")</p>
+					<div class="onboard-grid mt-4">
+						<div class="step-card">
+							<div class="step-label mb-2">Step 1</div>
+							<div class="fw-semibold">Link existing parent email</div>
+							<div class="text-muted small">Keep your earlier history by linking the email you used before signing in.</div>
+						</div>
+						<div class="step-card">
+							<div class="step-label mb-2">Step 2</div>
+							<div class="fw-semibold">Add your children</div>
+							<div class="text-muted small">Set point values and reward rates in minutes.</div>
+						</div>
+						<div class="step-card">
+							<div class="step-label mb-2">Step 3</div>
+							<div class="fw-semibold">Log a deed</div>
+							<div class="text-muted small">Track progress and balances instantly.</div>
 						</div>
 					</div>
 				</div>
-				<div class="col-12 col-lg-8">
-					<div class="card card-elevated h-100">
-						<div class="card-body">
-							<h5 class="card-title">Children Snapshot</h5>
-							<div class="list-group list-group-flush">
-								@foreach (var child in _children)
-								{
-									<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @onclick='() => Navigation.NavigateTo($"children/{child.Id}")'>
-										<div>
-											<div class="fw-semibold">@child.Name</div>
-											<small class="text-muted">@child.DeedsCount deed(s) logged</small>
-										</div>
-										<div class="text-end">
-											<div class="fw-semibold @(child.Points >= 0 ? "points-positive" : "points-negative")">@child.Points pts</div>
-											<small class="text-muted">$@child.Dollars.ToString("F2")</small>
-										</div>
-									</button>
-								}
+			</div>
+		</div>
+
+		@if (_isLoading)
+		{
+			<div class="content-section text-center text-muted">Loading dashboard.</div>
+		}
+		else if (_parentId is null)
+		{
+			<div class="content-section">
+				<div class="card card-elevated">
+					<div class="card-body">
+						<h5 class="fw-semibold mb-2">You're almost ready</h5>
+						<p class="text-muted mb-3">Connect your parent account to load children, deeds, and balances.</p>
+						<div class="d-flex flex-wrap gap-2">
+							<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("settings")'>Open settings</button>
+							@if (_authUser is null)
+							{
+								<a class="btn btn-outline-secondary" href="@LoginUrl">Sign in with Microsoft</a>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+		else if (_loadError)
+		{
+			<div class="content-section">
+				<div class="card card-elevated">
+					<div class="card-body">
+						<h5 class="fw-semibold mb-2">We couldn't load your dashboard yet</h5>
+						<p class="text-muted mb-3">Finish signing in and try again in a moment.</p>
+						<button class="btn btn-primary" @onclick="LoadDashboardAsync">Retry loading</button>
+					</div>
+				</div>
+			</div>
+		}
+		else if (_children.Count == 0)
+		{
+			<div class="content-section">
+				<div class="card card-elevated text-center">
+					<div class="card-body">
+						<h5 class="fw-semibold mb-2">No children added yet</h5>
+						<p class="text-muted">Add your first child to start tracking deeds and balances.</p>
+						<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
+					</div>
+				</div>
+			</div>
+		}
+		else
+		{
+			<div class="content-section">
+				<div class="row g-4">
+					<div class="col-12 col-lg-4">
+						<div class="card card-elevated h-100">
+							<div class="card-body">
+								<h5 class="card-title">Total Family Balance</h5>
+								<p class="display-6 fw-bold">@_totalPoints pts</p>
+								<p class="text-muted mb-0">Equivalent to $@_totalDollars.ToString("F2")</p>
+							</div>
+						</div>
+					</div>
+					<div class="col-12 col-lg-8">
+						<div class="card card-elevated h-100">
+							<div class="card-body">
+								<h5 class="card-title">Children Snapshot</h5>
+								<div class="list-group list-group-flush">
+									@foreach (var child in _children)
+									{
+										<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @onclick='() => Navigation.NavigateTo($"children/{child.Id}")'>
+											<div>
+												<div class="fw-semibold">@child.Name</div>
+												<small class="text-muted">@child.DeedsCount deed(s) logged</small>
+											</div>
+											<div class="text-end">
+												<div class="fw-semibold @(child.Points >= 0 ? "points-positive" : "points-negative")">@child.Points pts</div>
+												<small class="text-muted">$@child.Dollars.ToString("F2")</small>
+											</div>
+										</button>
+									}
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	}
+		}
+	</div>
 </div>
 
 @code {

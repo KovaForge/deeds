@@ -4,111 +4,113 @@
 @inject AuthService Auth
 @inject UserSettingsService UserSettings
 
-<h3>Quick Start</h3>
+<div class="page">
+    <h3>Quick Start</h3>
 
-@if (!string.IsNullOrWhiteSpace(_error))
-{
-    <div class="alert alert-danger">@_error</div>
-}
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
 
-@if (!string.IsNullOrWhiteSpace(_success))
-{
-    <div class="alert alert-success">@_success</div>
-}
+    @if (!string.IsNullOrWhiteSpace(_success))
+    {
+        <div class="alert alert-success">@_success</div>
+    }
 
-<div class="stack">
-    <section>
-        <h5>1) Create or load parent</h5>
-        <div class="form-grid">
-            <label>Email</label>
-            <input class="form-control" @bind="_parentEmail" />
-            <button class="btn btn-primary" @onclick="CreateParentAsync" type="button">Save parent</button>
-        </div>
-        @if (_parent is not null)
-        {
-            <p class="small text-muted">Parent ID: @_parent.Id</p>
-        }
-    </section>
+    <div class="stack">
+        <section>
+            <h5>1) Create or load parent</h5>
+            <div class="form-grid">
+                <label>Email</label>
+                <input class="form-control" @bind="_parentEmail" />
+                <button class="btn btn-primary" @onclick="CreateParentAsync" type="button">Save parent</button>
+            </div>
+            @if (_parent is not null)
+            {
+                <p class="small text-muted">Parent ID: @_parent.Id</p>
+            }
+        </section>
 
-    <section>
-        <h5>2) Add a child</h5>
-        <div class="form-grid">
-            <label>Name</label>
-            <input class="form-control" @bind="_childName" />
-            <label>Dollar per point</label>
-            <input class="form-control" type="number" step="0.01" min="0.01" @bind-value="_childRate" @bind-value:event="oninput" />
-            <button class="btn btn-primary" @onclick="CreateChildAsync" type="button" disabled="@(!_hasParent)">Create child</button>
-        </div>
-        @if (_child is not null)
-        {
-            <p class="small text-muted">Child ID: @_child.Id</p>
-        }
-    </section>
+        <section>
+            <h5>2) Add a child</h5>
+            <div class="form-grid">
+                <label>Name</label>
+                <input class="form-control" @bind="_childName" />
+                <label>Dollar per point</label>
+                <input class="form-control" type="number" step="0.01" min="0.01" @bind-value="_childRate" @bind-value:event="oninput" />
+                <button class="btn btn-primary" @onclick="CreateChildAsync" type="button" disabled="@(!_hasParent)">Create child</button>
+            </div>
+            @if (_child is not null)
+            {
+                <p class="small text-muted">Child ID: @_child.Id</p>
+            }
+        </section>
 
-    <section>
-        <h5>3) Add a deed type</h5>
-        <div class="form-grid">
-            <label>Name</label>
-            <input class="form-control" @bind="_deedTypeName" />
-            <label>Points</label>
-            <input class="form-control" type="number" step="1" @bind-value="_deedTypePoints" @bind-value:event="oninput" />
-            <button class="btn btn-primary" @onclick="CreateDeedTypeAsync" type="button" disabled="@(!_hasParent)">Create deed type</button>
-        </div>
-        @if (_deedType is not null)
-        {
-            <p class="small text-muted">Deed type ID: @_deedType.Id (@_deedType.Points points)</p>
-        }
-    </section>
+        <section>
+            <h5>3) Add a deed type</h5>
+            <div class="form-grid">
+                <label>Name</label>
+                <input class="form-control" @bind="_deedTypeName" />
+                <label>Points</label>
+                <input class="form-control" type="number" step="1" @bind-value="_deedTypePoints" @bind-value:event="oninput" />
+                <button class="btn btn-primary" @onclick="CreateDeedTypeAsync" type="button" disabled="@(!_hasParent)">Create deed type</button>
+            </div>
+            @if (_deedType is not null)
+            {
+                <p class="small text-muted">Deed type ID: @_deedType.Id (@_deedType.Points points)</p>
+            }
+        </section>
 
-    <section>
-        <h5>4) Log a deed</h5>
-        <div class="form-grid">
-            <label>Child ID</label>
-            <input class="form-control" @bind="_deedChildId" />
-            <label>Deed type ID</label>
-            <input class="form-control" @bind="_deedTypeId" />
-            <label>Override points (optional)</label>
-            <input class="form-control" type="number" step="1" @bind-value="_deedPointsOverride" @bind-value:event="oninput" />
-            <label>Note (optional)</label>
-            <input class="form-control" @bind="_deedNote" />
-            <button class="btn btn-primary" @onclick="LogDeedAsync" type="button" disabled="@(!_hasParent)">Log deed</button>
-        </div>
-        @if (_lastDeed is not null)
-        {
-            <p class="small text-muted">Saved deed @_lastDeed.Id for child @_lastDeed.ChildId (@_lastDeed.Points points)</p>
-        }
-    </section>
+        <section>
+            <h5>4) Log a deed</h5>
+            <div class="form-grid">
+                <label>Child ID</label>
+                <input class="form-control" @bind="_deedChildId" />
+                <label>Deed type ID</label>
+                <input class="form-control" @bind="_deedTypeId" />
+                <label>Override points (optional)</label>
+                <input class="form-control" type="number" step="1" @bind-value="_deedPointsOverride" @bind-value:event="oninput" />
+                <label>Note (optional)</label>
+                <input class="form-control" @bind="_deedNote" />
+                <button class="btn btn-primary" @onclick="LogDeedAsync" type="button" disabled="@(!_hasParent)">Log deed</button>
+            </div>
+            @if (_lastDeed is not null)
+            {
+                <p class="small text-muted">Saved deed @_lastDeed.Id for child @_lastDeed.ChildId (@_lastDeed.Points points)</p>
+            }
+        </section>
 
-    <section>
-        <h5>5) Redeem points</h5>
-        <div class="form-grid">
-            <label>Child ID</label>
-            <input class="form-control" @bind="_redeemChildId" />
-            <label>Points to redeem</label>
-            <input class="form-control" type="number" step="1" min="1" @bind-value="_redeemPoints" @bind-value:event="oninput" />
-            <label>Description (optional)</label>
-            <input class="form-control" @bind="_redeemDescription" />
-            <button class="btn btn-primary" @onclick="RedeemAsync" type="button" disabled="@(!_hasParent)">Redeem</button>
-        </div>
-        @if (_lastRedemption is not null)
-        {
-            <p class="small text-muted">Redeemed @_lastRedemption.Points points (id @_lastRedemption.Id)</p>
-        }
-    </section>
+        <section>
+            <h5>5) Redeem points</h5>
+            <div class="form-grid">
+                <label>Child ID</label>
+                <input class="form-control" @bind="_redeemChildId" />
+                <label>Points to redeem</label>
+                <input class="form-control" type="number" step="1" min="1" @bind-value="_redeemPoints" @bind-value:event="oninput" />
+                <label>Description (optional)</label>
+                <input class="form-control" @bind="_redeemDescription" />
+                <button class="btn btn-primary" @onclick="RedeemAsync" type="button" disabled="@(!_hasParent)">Redeem</button>
+            </div>
+            @if (_lastRedemption is not null)
+            {
+                <p class="small text-muted">Redeemed @_lastRedemption.Points points (id @_lastRedemption.Id)</p>
+            }
+        </section>
 
-    <section>
-        <h5>6) Check balance</h5>
-        <div class="form-grid">
-            <label>Child ID</label>
-            <input class="form-control" @bind="_balanceChildId" />
-            <button class="btn btn-secondary" @onclick="LoadBalanceAsync" type="button" disabled="@(!_hasParent)">Refresh</button>
-        </div>
-        @if (_balance is not null)
-        {
-            <p>Points: @_balance.Points</p>
-            <p>Dollar balance: $@_balance.Dollars.ToString("F2")</p>
-        }
-    </section>
+        <section>
+            <h5>6) Check balance</h5>
+            <div class="form-grid">
+                <label>Child ID</label>
+                <input class="form-control" @bind="_balanceChildId" />
+                <button class="btn btn-secondary" @onclick="LoadBalanceAsync" type="button" disabled="@(!_hasParent)">Refresh</button>
+            </div>
+            @if (_balance is not null)
+            {
+                <p>Points: @_balance.Points</p>
+                <p>Dollar balance: $@_balance.Dollars.ToString("F2")</p>
+            }
+        </section>
+    </div>
 </div>
 
 @code {

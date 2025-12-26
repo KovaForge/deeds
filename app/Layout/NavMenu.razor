@@ -4,6 +4,14 @@
 <aside class="sidebar">
     <div class="brand">Good Deeds Tracker</div>
     <button class="nav-toggle" type="button" @onclick="ToggleNavMenu">Menu</button>
+    @if (_authUser is not null)
+    {
+        <div class="muted small">
+            Signed in as
+            <div class="auth-user">@_authUser.DisplayName</div>
+            <div>@(_authUser.Email ?? _authUser.UserDetails)</div>
+        </div>
+    }
     <nav class="nav @(collapseNavMenu ? "collapsed" : string.Empty)">
         <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink>
         <NavLink class="nav-link" href="quickstart">Quick Start</NavLink>
@@ -18,8 +26,7 @@
         }
         else
         {
-            <div class="auth-user">Hi, @_authUser.DisplayName</div>
-            <a class="btn btn-outline-secondary w-100" href="@LogoutUrl">Sign out</a>
+            <a class="signout" href="@LogoutUrl">Sign out</a>
         }
     </div>
 </aside>
