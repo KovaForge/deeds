@@ -245,7 +245,7 @@
 
         try
         {
-            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(_form.Name, _suggestCondition, _form.IsGood);
+            var suggestion = await ChatGpt.SuggestPointsForConditionAsync(_form.Name, _suggestCondition, _form.IsGood, _deedTypes);
             if (suggestion is null)
             {
                 _suggestFeedback = "AI could not suggest points right now. Try again.";

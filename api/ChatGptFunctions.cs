@@ -50,10 +50,9 @@ public class ChatGptFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "DeedTypeName is required");
         }
 
-        if (string.IsNullOrWhiteSpace(payload.Condition))
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Condition is required");
-        }
+        var condition = string.IsNullOrWhiteSpace(payload.Condition)
+            ? "No additional details provided."
+            : payload.Condition.Trim();
 
         if (!CryptoHelper.TryGetEncryptionKey(out var encryptionKey, out var encryptionError))
         {
@@ -104,7 +103,8 @@ Respond with JSON containing:
 - points: integer (positive for good, negative for bad)
 - reason: string (brief explanation of your assessment)";
 
-        var userPrompt = $"Behavior category: {payload.DeedTypeName}\nNature: {(payload.IsPositive ? "positive" : "negative")}\nSpecific incident: {payload.Condition}\n\nSuggest appropriate screen time adjustment in minutes.";
+        var deedTypesJson = JsonSerializer.Serialize(payload.DeedTypes ?? Array.Empty<AiDeedType>());
+        var userPrompt = $"Behavior category: {payload.DeedTypeName}\nNature: {(payload.IsPositive ? "positive" : "negative")}\nSpecific incident: {condition}\n\nExisting deed types (JSON): {deedTypesJson}\n\nSuggest appropriate screen time adjustment in minutes.";
 
         var requestBody = new
         {

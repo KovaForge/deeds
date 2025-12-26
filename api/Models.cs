@@ -21,7 +21,8 @@ public record RedemptionDto(Guid Id, Guid ChildId, Guid RedeemTypeId, int Points
 public record ChildHistoryRow(string EntryType, int Points, decimal DollarValue, string? Note, DateTime OccurredAt, string RecordedBy);
 public record ChildWithBalanceDto(Guid Id, Guid ParentId, string Name, decimal DollarPerPoint, int Points, decimal Dollars);
 
-public record AiSuggestRequest(string DeedTypeName, string Condition, bool IsPositive);
+public record AiSuggestRequest(string DeedTypeName, string? Condition, bool IsPositive, AiDeedType[] DeedTypes);
+public record AiDeedType(string Name, int Points);
 public record AiSuggestResponse(int Points, string Reason);
 public record AiKeyRequest(string ApiKey);
 public record AiKeyStatus(bool HasKey);

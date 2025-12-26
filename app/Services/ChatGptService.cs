@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using GoodDeeds.Client.Models;
 
 namespace GoodDeeds.Client.Services;
 
@@ -13,14 +14,13 @@ public class ChatGptService
         _http = http;
     }
 
-    public async Task<ChatGptSuggestion?> SuggestPointsForConditionAsync(string deedTypeName, string condition, bool isPositive, CancellationToken cancellationToken = default)
+    public async Task<ChatGptSuggestion?> SuggestPointsForConditionAsync(string deedTypeName, string? condition, bool isPositive, IReadOnlyList<DeedTypeDto> deedTypes, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(condition))
-        {
-            throw new ArgumentException("Condition is required", nameof(condition));
-        }
-
-        var payload = new AiSuggestRequest(deedTypeName, condition, isPositive);
+        var payload = new AiSuggestRequest(
+            deedTypeName,
+            string.IsNullOrWhiteSpace(condition) ? null : condition.Trim(),
+            isPositive,
+            deedTypes.Select(d => new AiDeedType(d.Name, d.Points)).ToArray());
         using var response = await _http.PostAsJsonAsync("ai/suggest", payload, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
@@ -45,6 +45,7 @@ public class ChatGptService
         }
     }
 
-    private sealed record AiSuggestRequest(string DeedTypeName, string Condition, bool IsPositive);
+    private sealed record AiSuggestRequest(string DeedTypeName, string? Condition, bool IsPositive, AiDeedType[] DeedTypes);
+    private sealed record AiDeedType(string Name, int Points);
     private sealed record ErrorResponse(string Error);
 }
