@@ -178,6 +178,21 @@ main.content {
     display: block;
 }
 
+.nav-children {
+    margin-left: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nav .nav-link.nav-child {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--page-muted);
+    border-radius: 8px;
+}
+
 .nav .nav-link.active,
 .nav .nav-link:hover {
     background: linear-gradient(120deg, var(--page-accent), var(--page-accent-strong));

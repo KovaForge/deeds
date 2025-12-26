@@ -1,5 +1,7 @@
 @inject AuthService Auth
 @inject NavigationManager Navigation
+@inject ApiClient ApiClient
+@inject UserSettingsService Settings
 @implements IDisposable
 
 <aside class="sidebar">
@@ -16,6 +18,15 @@
     <nav class="nav @(collapseNavMenu ? "collapsed" : string.Empty)">
         <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink>
         <NavLink class="nav-link" href="children">Children</NavLink>
+        @if (_children.Count > 0)
+        {
+            <div class="nav-children">
+                @foreach (var child in _children)
+                {
+                    <NavLink class="nav-link nav-child" href="@($"children/{child.Id}")">@child.Name</NavLink>
+                }
+            </div>
+        }
         <NavLink class="nav-link" href="deeds">Deed Types</NavLink>
         <NavLink class="nav-link" href="redeems">Redeem Types</NavLink>
         <NavLink class="nav-link" href="profile">Profile</NavLink>
@@ -34,13 +45,15 @@
 </aside>
 
 @code {
-    private bool collapseNavMenu = true;
+    private bool collapseNavMenu = false;
     private AuthUser? _authUser;
+    private readonly List<ChildDto> _children = [];
 
     protected override async Task OnInitializedAsync()
     {
         Auth.UserChanged += OnAuthChanged;
         _authUser = await Auth.GetUserAsync();
+        await LoadChildrenAsync();
     }
 
     private void OnAuthChanged()
@@ -48,6 +61,7 @@
         _ = InvokeAsync(async () =>
         {
             _authUser = await Auth.GetUserAsync();
+            await LoadChildrenAsync();
             StateHasChanged();
         });
     }
@@ -55,6 +69,25 @@
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async Task LoadChildrenAsync()
+    {
+        _children.Clear();
+        var parentId = await Settings.GetParentIdAsync();
+        if (!parentId.HasValue)
+        {
+            return;
+        }
+
+        try
+        {
+            _children.AddRange(await ApiClient.GetChildrenAsync(parentId.Value));
+        }
+        catch
+        {
+            // Sidebar should not block rendering if children fail to load.
+        }
     }
 
     private string LoginUrl => $"/.auth/login/aad?post_login_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
