@@ -277,7 +277,7 @@ returning id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as P
   public static async Task<DeedDetails?> GetDeedDetails(string cs, Guid deedId)
   {
     const string sql = @"
-select d.id, d.child_id, c.parent_id
+select d.id as Id, d.child_id as ChildId, c.parent_id as ParentId
 from deeds d
 join children c on c.id = d.child_id
 where d.id = @Id";
