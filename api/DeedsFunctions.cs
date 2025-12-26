@@ -134,13 +134,20 @@ public class DeedsFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        var removed = await Data.DeleteDeed(_cs, deedId);
-        if (!removed)
+        try
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
+            var removed = await Data.DeleteDeed(_cs, deedId);
+            if (!removed)
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Deed not found");
+            }
 
-        return req.CreateResponse(HttpStatusCode.NoContent);
+            return req.CreateResponse(HttpStatusCode.NoContent);
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to delete deed: {ex.Message}");
+        }
     }
 
     private static async Task<HttpResponseData> CreateErrorResponse(HttpRequestData req, HttpStatusCode status, string message)

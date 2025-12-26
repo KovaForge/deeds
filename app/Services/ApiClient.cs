@@ -281,7 +281,8 @@ public class ApiClient
         if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
         {
             var error = await ReadErrorAsync(response);
-            throw new InvalidOperationException(error ?? "Unable to delete deed");
+            var message = error ?? $"Unable to delete deed (Status: {(int)response.StatusCode} {response.StatusCode})";
+            throw new InvalidOperationException(message);
         }
     }
 

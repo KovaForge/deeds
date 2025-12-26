@@ -426,12 +426,43 @@
     {
         try
         {
-            await ApiClient.DeleteDeedAsync(ChildId, deedId, _parentId!.Value);
+            var resolvedParent = await ResolveParentIdAsync();
+            if (resolvedParent is null)
+            {
+                _feedback = "Configure your parent account in Settings first.";
+                return;
+            }
+
+            _parentId = resolvedParent;
+            await ApiClient.DeleteDeedAsync(ChildId, deedId, _parentId.Value);
             await LoadAsync();
         }
         catch (Exception ex)
         {
-            _feedback = ex.Message;
+            var message = ex.Message;
+            if (message.Contains("ParentId", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var storedEmail = await Settings.GetParentEmailAsync();
+                    if (!string.IsNullOrWhiteSpace(storedEmail))
+                    {
+                        var linked = await ApiClient.LinkParentAsync(storedEmail);
+                        await Settings.SetParentIdAsync(linked.Id);
+                        await Settings.SetParentEmailAsync(linked.Email);
+                        _parentId = linked.Id;
+                        await ApiClient.DeleteDeedAsync(ChildId, deedId, _parentId.Value);
+                        await LoadAsync();
+                        return;
+                    }
+                }
+                catch (Exception linkEx)
+                {
+                    message = linkEx.Message;
+                }
+            }
+
+            _feedback = message;
         }
     }
 
