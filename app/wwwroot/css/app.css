@@ -106,6 +106,10 @@ body {
     background: transparent;
 }
 
+.content-section {
+    padding: 2rem 1.5rem 3rem;
+}
+
 .text-muted {
     color: var(--page-muted) !important;
 }
@@ -263,7 +267,7 @@ code {
     z-index: 1;
     background: linear-gradient(135deg, #121a30 0%, #0b1020 100%);
     border-radius: 0;
-    padding: 3rem 2.5rem;
+    padding: 3.5rem 2.5rem;
     border: none;
     box-shadow: none;
 }

@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 
 @inject ApiClient ApiClient
 @inject AuthService Auth
@@ -61,70 +61,80 @@
 			</div>
 		</div>
 	</div>
-</div>
 
-@if (_isLoading)
-{
-	<div class="text-center text-muted">Loading dashboard…</div>
-}
-else if (_parentId is null)
-{
-	<div class="glass-panel p-4">
-		<h5 class="fw-semibold mb-2">You're almost ready</h5>
-		<p class="text-muted mb-3">Connect your parent account to load children, deeds, and balances.</p>
-		<div class="d-flex flex-wrap gap-2">
-			<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("settings")'>Open settings</button>
-			@if (_authUser is null)
-			{
-				<a class="btn btn-outline-secondary" href="@LoginUrl">Sign in with Microsoft</a>
-			}
-		</div>
-	</div>
-}
-else if (_children.Count == 0)
-{
-	<div class="glass-panel p-4 text-center">
-		<h5 class="fw-semibold mb-2">No children added yet</h5>
-		<p class="text-muted">Add your first child to start tracking deeds and balances.</p>
-	<button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
-	</div>
-}
-else
-{
-	<div class="row g-4">
-		<div class="col-12 col-lg-4">
-			<div class="card card-elevated h-100">
+	@if (_isLoading)
+	{
+		<div class="content-section text-center text-muted">Loading dashboard.</div>
+	}
+	else if (_parentId is null)
+	{
+		<div class="content-section">
+			<div class="card card-elevated">
 				<div class="card-body">
-					<h5 class="card-title">Total Family Balance</h5>
-					<p class="display-6 fw-bold">@_totalPoints pts</p>
-					<p class="text-muted mb-0">Equivalent to $@_totalDollars.ToString("F2")</p>
-				</div>
-			</div>
-		</div>
-		<div class="col-12 col-lg-8">
-			<div class="card card-elevated h-100">
-				<div class="card-body">
-					<h5 class="card-title">Children Snapshot</h5>
-					<div class="list-group list-group-flush">
-						@foreach (var child in _children)
+					<h5 class="fw-semibold mb-2">You're almost ready</h5>
+					<p class="text-muted mb-3">Connect your parent account to load children, deeds, and balances.</p>
+					<div class="d-flex flex-wrap gap-2">
+						<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("settings")'>Open settings</button>
+						@if (_authUser is null)
 						{
-							<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @onclick='() => Navigation.NavigateTo($"children/{child.Id}")'>
-								<div>
-									<div class="fw-semibold">@child.Name</div>
-									<small class="text-muted">@child.DeedsCount deed(s) logged</small>
-								</div>
-								<div class="text-end">
-									<div class="fw-semibold @(child.Points >= 0 ? "points-positive" : "points-negative")">@child.Points pts</div>
-									<small class="text-muted">$@child.Dollars.ToString("F2")</small>
-								</div>
-							</button>
+							<a class="btn btn-outline-secondary" href="@LoginUrl">Sign in with Microsoft</a>
 						}
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
-}
+	}
+	else if (_children.Count == 0)
+	{
+		<div class="content-section">
+			<div class="card card-elevated text-center">
+				<div class="card-body">
+					<h5 class="fw-semibold mb-2">No children added yet</h5>
+					<p class="text-muted">Add your first child to start tracking deeds and balances.</p>
+					<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
+				</div>
+			</div>
+		</div>
+	}
+	else
+	{
+		<div class="content-section">
+			<div class="row g-4">
+				<div class="col-12 col-lg-4">
+					<div class="card card-elevated h-100">
+						<div class="card-body">
+							<h5 class="card-title">Total Family Balance</h5>
+							<p class="display-6 fw-bold">@_totalPoints pts</p>
+							<p class="text-muted mb-0">Equivalent to $@_totalDollars.ToString("F2")</p>
+						</div>
+					</div>
+				</div>
+				<div class="col-12 col-lg-8">
+					<div class="card card-elevated h-100">
+						<div class="card-body">
+							<h5 class="card-title">Children Snapshot</h5>
+							<div class="list-group list-group-flush">
+								@foreach (var child in _children)
+								{
+									<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @onclick='() => Navigation.NavigateTo($"children/{child.Id}")'>
+										<div>
+											<div class="fw-semibold">@child.Name</div>
+											<small class="text-muted">@child.DeedsCount deed(s) logged</small>
+										</div>
+										<div class="text-end">
+											<div class="fw-semibold @(child.Points >= 0 ? "points-positive" : "points-negative")">@child.Points pts</div>
+											<small class="text-muted">$@child.Dollars.ToString("F2")</small>
+										</div>
+									</button>
+								}
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+</div>
 
 @code {
 	private Guid? _parentId;
@@ -147,7 +157,7 @@ else
 		try
 		{
 			var children = await ApiClient.GetChildrenAsync(_parentId.Value);
-			
+
 			if (children.Count > 0)
 			{
 				var balanceTasks = children.Select(async child => new
