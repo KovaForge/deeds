@@ -120,7 +120,7 @@
                 <div class="mb-3">
                     <label class="form-label">Existing parent email</label>
                     <InputText class="form-control" @bind-Value="_linkForm.Email" />
-                    <div class="form-text">Example: the email you used before signing in (e.g., mike@delpach.com).</div>
+                    <div class="form-text">Example: the email you used before signing in.</div>
                 </div>
                 <button class="btn btn-primary" type="submit" disabled="@_linkingParent">@(_linkingParent ? "Linking." : "Link account")</button>
             </EditForm>
