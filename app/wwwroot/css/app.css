@@ -75,6 +75,23 @@ body {
     color: var(--page-text);
 }
 
+.top-nav {
+    background: var(--page-bg) !important;
+    box-shadow: 0 4px 12px rgba(4, 6, 16, 0.4);
+    border-bottom: 1px solid rgba(140, 160, 220, 0.22);
+}
+
+.top-nav .navbar-brand,
+.top-nav .nav-link {
+    color: #dbe4ff !important;
+}
+
+.top-nav .nav-link.active,
+.top-nav .nav-link:hover {
+    background-color: rgba(120, 140, 255, 0.25);
+    color: #ffffff !important;
+}
+
 .app-shell {
     background: var(--page-bg);
     min-height: 100vh;
