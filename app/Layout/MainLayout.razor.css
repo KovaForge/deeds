@@ -1,10 +1,11 @@
 .app-shell {
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(180deg, #f5f7fb 0%, #ffffff 80%);
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    background: var(--page-bg);
 }
 
-.main-content {
-    flex: 1;
+.content {
+    min-width: 0;
+    padding: 28px 32px;
 }
