@@ -1,46 +1,28 @@
 @inject AuthService Auth
 @inject NavigationManager Navigation
 
-<header class="top-nav navbar navbar-expand-lg">
-    <div class="container-fluid">
-        <a class="navbar-brand fw-semibold" href="/">Good Deeds Tracker</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse @(collapseNavMenu ? string.Empty : "show")">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="quickstart">Quick Start</NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="children">Children</NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="deeds">Deed Types</NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="settings">Settings</NavLink>
-                </li>
-                <li class="nav-item d-flex align-items-center">
-                    @if (_authUser is null)
-                    {
-                        <a class="btn btn-outline-light btn-sm ms-lg-3" href="@LoginUrl">Sign in with Microsoft</a>
-                    }
-                    else
-                    {
-                        <div class="d-flex align-items-center gap-2 ms-lg-3">
-                            <span class="text-white-50 small">Hi, @_authUser.DisplayName</span>
-                            <a class="btn btn-outline-light btn-sm" href="@LogoutUrl">Sign out</a>
-                        </div>
-                    }
-                </li>
-            </ul>
-        </div>
+<aside class="sidebar">
+    <div class="brand">Good Deeds Tracker</div>
+    <button class="nav-toggle" type="button" @onclick="ToggleNavMenu">Menu</button>
+    <nav class="nav @(collapseNavMenu ? "collapsed" : string.Empty)">
+        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink>
+        <NavLink class="nav-link" href="quickstart">Quick Start</NavLink>
+        <NavLink class="nav-link" href="children">Children</NavLink>
+        <NavLink class="nav-link" href="deeds">Deed Types</NavLink>
+        <NavLink class="nav-link" href="settings">Settings</NavLink>
+    </nav>
+    <div class="auth-block">
+        @if (_authUser is null)
+        {
+            <a class="btn btn-outline-primary w-100" href="@LoginUrl">Sign in with Microsoft</a>
+        }
+        else
+        {
+            <div class="auth-user">Hi, @_authUser.DisplayName</div>
+            <a class="btn btn-outline-secondary w-100" href="@LogoutUrl">Sign out</a>
+        }
     </div>
-</header>
+</aside>
 
 @code {
     private bool collapseNavMenu = true;
