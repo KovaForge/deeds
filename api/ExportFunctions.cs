@@ -20,7 +20,7 @@ public class ExportFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/export/csv")] HttpRequestData req,
         Guid childId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var guardError))
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var guardError))
         {
             return guardError;
         }

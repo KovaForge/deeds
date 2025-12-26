@@ -37,7 +37,7 @@ public class ChildrenFunctions
         }
 
         var payloadParentId = payload.ParentId;
-        if (!ParentGuard.TryGetParent(req, payloadParentId, out var parentId, out var guardError))
+        if (!ParentGuard.TryGetParent(req, _cs, payloadParentId, out var parentId, out var guardError))
         {
             return guardError!;
         }
@@ -78,7 +78,7 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/{parentId:guid}/children")] HttpRequestData req,
         Guid parentId)
     {
-        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        if (!ParentGuard.TryEnsureParent(req, _cs, parentId, out var guardError))
         {
             return guardError!;
         }
@@ -122,7 +122,7 @@ public class ChildrenFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Request body required");
         }
 
-        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var error))
+        if (!ParentGuard.TryGetParent(req, _cs, payload.ParentId, out var parentId, out var error))
         {
             return error;
         }
@@ -171,7 +171,7 @@ public class ChildrenFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}")] HttpRequestData req,
         Guid childId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var error))
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var error))
         {
             return error;
         }
@@ -193,7 +193,7 @@ public class ChildrenFunctions
         Guid parentId,
         Guid childId)
     {
-        if (!ParentGuard.TryEnsureParent(req, parentId, out var guardError))
+        if (!ParentGuard.TryEnsureParent(req, _cs, parentId, out var guardError))
         {
             return guardError!;
         }

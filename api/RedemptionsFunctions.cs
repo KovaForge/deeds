@@ -45,7 +45,7 @@ public class RedemptionsFunctions
             return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Points must be greater than zero");
         }
 
-        if (!ParentGuard.TryGetParent(req, payload.ParentId, out var parentId, out var parentError))
+        if (!ParentGuard.TryGetParent(req, _cs, payload.ParentId, out var parentId, out var parentError))
         {
             return parentError;
         }
@@ -80,7 +80,7 @@ public class RedemptionsFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "children/{childId:guid}/redemptions")] HttpRequestData req,
         Guid childId)
     {
-        if (!ParentGuard.TryGetParent(req, out var parentId, out var parentError))
+        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var parentError))
         {
             return parentError;
         }

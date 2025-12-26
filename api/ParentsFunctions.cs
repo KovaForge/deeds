@@ -21,21 +21,39 @@ public class ParentsFunctions
     public async Task<HttpResponseData> CreateParent(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "parents")] HttpRequestData req)
     {
-        CreateParent? payload;
-        try
+        string normalizedEmail;
+        if (ParentGuard.TryGetAuthenticatedEmail(req, out var authEmail, out var authError))
         {
-            payload = await req.ReadFromJsonAsync<CreateParent>();
+            normalizedEmail = authEmail!.Trim().ToLowerInvariant();
         }
-        catch (JsonException)
+        else
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Invalid JSON payload");
-        }
-        if (payload is null || string.IsNullOrWhiteSpace(payload.Email))
-        {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Email is required");
-        }
+            if (authError is not null)
+            {
+                return authError;
+            }
 
-        var normalizedEmail = payload.Email.Trim().ToLowerInvariant();
+            if (!ParentGuard.AllowAnonymousParents())
+            {
+                return ParentGuard.CreateError(req, HttpStatusCode.Unauthorized, "Authentication required.");
+            }
+
+            CreateParent? payload;
+            try
+            {
+                payload = await req.ReadFromJsonAsync<CreateParent>();
+            }
+            catch (JsonException)
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Invalid JSON payload");
+            }
+            if (payload is null || string.IsNullOrWhiteSpace(payload.Email))
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Email is required");
+            }
+
+            normalizedEmail = payload.Email.Trim().ToLowerInvariant();
+        }
 
         try
         {
@@ -63,6 +81,11 @@ public class ParentsFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents/{id:guid}")] HttpRequestData req,
         Guid id)
     {
+        if (!ParentGuard.TryEnsureParent(req, _cs, id, out var guardError))
+        {
+            return guardError!;
+        }
+
         var parent = await Data.GetParentById(_cs, id);
         if (parent is null)
         {
@@ -78,16 +101,36 @@ public class ParentsFunctions
     public async Task<HttpResponseData> FindParentByEmail(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "parents")] HttpRequestData req)
     {
-    var query = QueryHelpers.ParseQuery(req.Url.Query);
-    var email = query.TryGetValue("email", out var values) ? values.ToString().Trim() : null;
-        if (string.IsNullOrWhiteSpace(email))
+        string normalizedEmail;
+        if (ParentGuard.TryGetAuthenticatedEmail(req, out var authEmail, out var authError))
         {
-            return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Email query parameter is required");
+            normalizedEmail = authEmail!.Trim().ToLowerInvariant();
+        }
+        else
+        {
+            if (authError is not null)
+            {
+                return authError;
+            }
+
+            if (!ParentGuard.AllowAnonymousParents())
+            {
+                return ParentGuard.CreateError(req, HttpStatusCode.Unauthorized, "Authentication required.");
+            }
+
+            var query = QueryHelpers.ParseQuery(req.Url.Query);
+            var email = query.TryGetValue("email", out var values) ? values.ToString().Trim() : null;
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.BadRequest, "Email query parameter is required");
+            }
+
+            normalizedEmail = email.ToLowerInvariant();
         }
 
         try
         {
-            var parent = await Data.GetParentByEmail(_cs, email.ToLowerInvariant());
+            var parent = await Data.GetParentByEmail(_cs, normalizedEmail);
             if (parent is null)
             {
                 return req.CreateResponse(HttpStatusCode.NotFound);

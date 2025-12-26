@@ -1,4 +1,6 @@
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Net;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.Functions.Worker;
@@ -7,14 +9,48 @@ using Microsoft.Azure.Functions.Worker.Http;
 public static class ParentGuard
 {
     private const string HeaderName = "x-parent-id";
+    private const string ClientPrincipalHeader = "x-ms-client-principal";
+    private const string AuthenticatedRole = "authenticated";
 
-    public static bool TryGetParent(HttpRequestData req, out Guid parentId, out HttpResponseData? errorResponse)
-        => TryGetParent(req, null, out parentId, out errorResponse);
+    public static bool TryGetParent(HttpRequestData req, string connectionString, out Guid parentId, out HttpResponseData? errorResponse)
+        => TryGetParent(req, connectionString, null, out parentId, out errorResponse);
 
-    public static bool TryGetParent(HttpRequestData req, Guid? payloadParentId, out Guid parentId, out HttpResponseData? errorResponse)
+    public static bool TryGetParent(HttpRequestData req, string connectionString, Guid? payloadParentId, out Guid parentId, out HttpResponseData? errorResponse)
     {
         parentId = Guid.Empty;
         errorResponse = null;
+
+        var principal = GetPrincipal(req);
+        if (principal.IsAuthenticated)
+        {
+            if (string.IsNullOrWhiteSpace(principal.Email))
+            {
+                errorResponse = CreateError(req, HttpStatusCode.Forbidden, "Authenticated user does not have an email claim.");
+                return false;
+            }
+
+            var normalizedEmail = principal.Email.Trim().ToLowerInvariant();
+            var parent = Data.GetParentByEmail(connectionString, normalizedEmail).GetAwaiter().GetResult();
+            if (parent is null)
+            {
+                parent = Data.CreateParent(connectionString, normalizedEmail).GetAwaiter().GetResult();
+            }
+
+            parentId = parent.Id;
+            if (payloadParentId.HasValue && payloadParentId.Value != Guid.Empty && payloadParentId.Value != parentId)
+            {
+                errorResponse = CreateError(req, HttpStatusCode.Conflict, "ParentId does not match authenticated user.");
+                return false;
+            }
+
+            return true;
+        }
+
+        if (!AllowAnonymousParents())
+        {
+            errorResponse = CreateError(req, HttpStatusCode.Unauthorized, "Authentication required.");
+            return false;
+        }
 
         if (req.Headers.TryGetValues(HeaderName, out var headerValues))
         {
@@ -53,19 +89,52 @@ public static class ParentGuard
         return false;
     }
 
-    public static bool TryEnsureParent(HttpRequestData req, Guid expectedParent, out HttpResponseData? errorResponse)
+    public static bool TryEnsureParent(HttpRequestData req, string connectionString, Guid expectedParent, out HttpResponseData? errorResponse)
     {
-        if (!TryGetParent(req, expectedParent, out var parentId, out errorResponse))
+        var principal = GetPrincipal(req);
+        if (principal.IsAuthenticated)
+        {
+            if (!TryGetParent(req, connectionString, expectedParent, out var parentId, out errorResponse))
+            {
+                return false;
+            }
+
+            if (parentId != expectedParent)
+            {
+                errorResponse = CreateError(req, HttpStatusCode.Forbidden, "ParentId does not match request target");
+                return false;
+            }
+
+            return true;
+        }
+
+        if (!AllowAnonymousParents())
+        {
+            errorResponse = CreateError(req, HttpStatusCode.Unauthorized, "Authentication required.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public static bool TryGetAuthenticatedEmail(HttpRequestData req, out string? email, out HttpResponseData? errorResponse)
+    {
+        email = null;
+        errorResponse = null;
+
+        var principal = GetPrincipal(req);
+        if (!principal.IsAuthenticated)
         {
             return false;
         }
 
-        if (parentId != expectedParent)
+        if (string.IsNullOrWhiteSpace(principal.Email))
         {
-            errorResponse = CreateError(req, HttpStatusCode.Forbidden, "ParentId does not match request target");
+            errorResponse = CreateError(req, HttpStatusCode.Forbidden, "Authenticated user does not have an email claim.");
             return false;
         }
 
+        email = principal.Email;
         return true;
     }
 
@@ -74,5 +143,93 @@ public static class ParentGuard
         var res = req.CreateResponse(status);
         res.WriteAsJsonAsync(new { error = message }).GetAwaiter().GetResult();
         return res;
+    }
+
+    public static bool AllowAnonymousParents()
+    {
+        var value = Environment.GetEnvironmentVariable("ALLOW_ANONYMOUS_PARENT");
+        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static AuthPrincipal GetPrincipal(HttpRequestData req)
+    {
+        try
+        {
+            if (!req.Headers.TryGetValues(ClientPrincipalHeader, out var values))
+            {
+                return AuthPrincipal.Anonymous;
+            }
+
+            var encoded = values.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(encoded))
+            {
+                return AuthPrincipal.Anonymous;
+            }
+
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+
+            var roles = root.TryGetProperty("userRoles", out var rolesElement) && rolesElement.ValueKind == JsonValueKind.Array
+                ? rolesElement.EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray()
+                : Array.Empty<string>();
+
+            var isAuthenticated = roles.Any(role => string.Equals(role, AuthenticatedRole, StringComparison.OrdinalIgnoreCase));
+            if (!isAuthenticated)
+            {
+                return AuthPrincipal.Anonymous;
+            }
+
+            var email = FindClaim(root, "preferred_username")
+                ?? FindClaim(root, "email")
+                ?? FindClaim(root, "upn");
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                var userDetails = root.TryGetProperty("userDetails", out var detailsElement) ? detailsElement.GetString() : null;
+                if (IsEmail(userDetails))
+                {
+                    email = userDetails;
+                }
+            }
+
+            return new AuthPrincipal(true, email);
+        }
+        catch
+        {
+            return AuthPrincipal.Anonymous;
+        }
+    }
+
+    private static string? FindClaim(JsonElement root, string type)
+    {
+        if (!root.TryGetProperty("claims", out var claimsElement) || claimsElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var claim in claimsElement.EnumerateArray())
+        {
+            if (!claim.TryGetProperty("typ", out var typElement) || !claim.TryGetProperty("val", out var valElement))
+            {
+                continue;
+            }
+
+            var claimType = typElement.GetString();
+            if (string.Equals(claimType, type, StringComparison.OrdinalIgnoreCase))
+            {
+                return valElement.GetString();
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsEmail(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+
+    private readonly record struct AuthPrincipal(bool IsAuthenticated, string? Email)
+    {
+        public static AuthPrincipal Anonymous => new(false, null);
     }
 }
