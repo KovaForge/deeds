@@ -241,8 +241,14 @@
 		try
 		{
 			var children = await ApiClient.GetChildrenAsync(_parentId.Value);
+            var seenChildIds = new HashSet<Guid>();
 			foreach (var child in children)
 			{
+                if (!seenChildIds.Add(child.Id))
+                {
+                    continue;
+                }
+
 				BalanceDto? balance = null;
 				IReadOnlyList<DeedDto> deeds = Array.Empty<DeedDto>();
 
