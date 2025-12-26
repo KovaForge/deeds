@@ -52,13 +52,20 @@
                             <DataAnnotationsValidator />
                             <div class="mb-3">
                                 <label class="form-label">Deed type</label>
-                                @if (_deedTypes.Count == 0)
-                                {
-                                    <div class="alert alert-warning">
-                                        No deed types available yet. Add them in <a href="/deeds">Deed Types</a>.
-                                    </div>
-                                }
-                                else
+                            @if (_deedTypes.Count == 0)
+                            {
+                                <div class="alert alert-warning">
+                                    @if (_linkRequired)
+                                    {
+                                        <span>Your Microsoft sign-in is linked to a different parent. Link your legacy email in <a href="/settings">Settings</a> to load existing deed types.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>No deed types available yet. Add them in <a href="/deeds">Deed Types</a>.</span>
+                                    }
+                                </div>
+                            }
+                            else
                                 {
                                     <select class="form-select" @onchange="OnDeedTypeChanged">
                                         <option value="">Select a deed type</option>
@@ -160,6 +167,7 @@
     private bool _authRefreshed;
     private bool _dataRefreshAttempted;
     private bool _linkRequired;
+    private bool _autoLinkAttempted;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -263,6 +271,7 @@
     private async Task<Guid?> ResolveParentIdAsync()
     {
         var storedParent = await Settings.GetParentIdAsync();
+        var storedEmail = await Settings.GetParentEmailAsync();
 
         try
         {
@@ -270,9 +279,27 @@
             if (current is not null)
             {
                 _linkRequired = storedParent.HasValue && storedParent.Value != current.Id;
+                if (_linkRequired && !_autoLinkAttempted && !string.IsNullOrWhiteSpace(storedEmail))
+                {
+                    _autoLinkAttempted = true;
+                    try
+                    {
+                        var linked = await ApiClient.LinkParentAsync(storedEmail);
+                        await Settings.SetParentIdAsync(linked.Id);
+                        await Settings.SetParentEmailAsync(linked.Email);
+                        _linkRequired = false;
+                        return linked.Id;
+                    }
+                    catch (Exception linkEx)
+                    {
+                        Console.WriteLine($"Auto-link failed: {linkEx.Message}");
+                    }
+                }
+
                 if (!storedParent.HasValue)
                 {
                     await Settings.SetParentIdAsync(current.Id);
+                    await Settings.SetParentEmailAsync(current.Email);
                 }
                 return current.Id;
             }

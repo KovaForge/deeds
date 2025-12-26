@@ -98,6 +98,7 @@
     private string? _formFeedback;
     private Guid? _childIdPendingDelete;
     private bool _showDeleteConfirm;
+    private bool _autoLinkAttempted;
 
     protected override async Task OnInitializedAsync()
     {
@@ -210,14 +211,32 @@
     private async Task<Guid?> ResolveParentIdAsync()
     {
         var storedParent = await Settings.GetParentIdAsync();
+        var storedEmail = await Settings.GetParentEmailAsync();
         try
         {
             var current = await ApiClient.GetCurrentParentAsync();
             if (current is not null)
             {
+                if (storedParent.HasValue && storedParent.Value != current.Id && !_autoLinkAttempted && !string.IsNullOrWhiteSpace(storedEmail))
+                {
+                    _autoLinkAttempted = true;
+                    try
+                    {
+                        var linked = await ApiClient.LinkParentAsync(storedEmail);
+                        await Settings.SetParentIdAsync(linked.Id);
+                        await Settings.SetParentEmailAsync(linked.Email);
+                        return linked.Id;
+                    }
+                    catch (Exception linkEx)
+                    {
+                        Console.WriteLine($"Auto-link failed: {linkEx.Message}");
+                    }
+                }
+
                 if (!storedParent.HasValue)
                 {
                     await Settings.SetParentIdAsync(current.Id);
+                    await Settings.SetParentEmailAsync(current.Email);
                 }
                 return current.Id;
             }

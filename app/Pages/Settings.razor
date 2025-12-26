@@ -173,6 +173,7 @@
             {
                 _parentForm.Email = _currentParent.Email;
                 _linkForm.Email = _currentParent.Email;
+                await UserSettings.SetParentEmailAsync(_currentParent.Email);
             }
         }
         else if (string.IsNullOrWhiteSpace(_parentForm.Email) && _authUser?.Email is not null)
@@ -241,6 +242,7 @@
 
             _currentParent = parent;
             await UserSettings.SetParentIdAsync(parent.Id);
+            await UserSettings.SetParentEmailAsync(parent.Email);
             _hasStoredParent = true;
             _linkForm.Email = parent.Email;
             _parentFeedback ??= "Parent saved.";
@@ -258,6 +260,7 @@
     private async Task ClearParentAsync()
     {
         await UserSettings.ClearParentIdAsync();
+        await UserSettings.ClearParentEmailAsync();
         _hasStoredParent = false;
         _currentParent = null;
         _parentFeedback = "Parent removed from this browser.";
@@ -304,6 +307,7 @@
             var parent = await ApiClient.LinkParentAsync(email);
             _currentParent = parent;
             await UserSettings.SetParentIdAsync(parent.Id);
+            await UserSettings.SetParentEmailAsync(parent.Email);
             _hasStoredParent = true;
             _parentForm.Email = parent.Email;
             _linkFeedback = "Account linked successfully.";

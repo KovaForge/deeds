@@ -5,10 +5,12 @@ namespace GoodDeeds.Client.Services;
 public class UserSettingsService
 {
     private const string ParentIdKey = "good-deeds.parent-id";
+    private const string ParentEmailKey = "good-deeds.parent-email";
     private const string ChatGptKey = "good-deeds.chatgpt-key";
 
     private readonly IJSRuntime _jsRuntime;
     private Guid? _cachedParentId;
+    private string? _cachedParentEmail;
     private string? _cachedChatGptKey;
 
     public UserSettingsService(IJSRuntime jsRuntime)
@@ -59,6 +61,66 @@ public class UserSettingsService
         try
         {
             await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ParentIdKey);
+        }
+        catch
+        {
+            // Ignore storage errors
+        }
+    }
+
+    public async Task<string?> GetParentEmailAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_cachedParentEmail))
+        {
+            return _cachedParentEmail;
+        }
+
+        try
+        {
+            var value = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", ParentEmailKey);
+            _cachedParentEmail = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+        catch
+        {
+            _cachedParentEmail = null;
+        }
+
+        return _cachedParentEmail;
+    }
+
+    public async Task SetParentEmailAsync(string? email)
+    {
+        _cachedParentEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant();
+        if (_cachedParentEmail is null)
+        {
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ParentEmailKey);
+            }
+            catch
+            {
+                // Ignore storage errors
+            }
+        }
+        else
+        {
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", ParentEmailKey, _cachedParentEmail);
+            }
+            catch
+            {
+                // Ignore storage errors
+            }
+        }
+    }
+
+    public async Task ClearParentEmailAsync()
+    {
+        _cachedParentEmail = null;
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", ParentEmailKey);
         }
         catch
         {
