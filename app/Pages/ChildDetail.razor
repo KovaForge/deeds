@@ -255,10 +255,6 @@ else
     private async Task<Guid?> ResolveParentIdAsync()
     {
         var storedParent = await Settings.GetParentIdAsync();
-        if (_authUser is null)
-        {
-            return storedParent;
-        }
 
         try
         {
