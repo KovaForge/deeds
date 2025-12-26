@@ -1,0 +1,233 @@
+@page "/redeems"
+
+@inject ApiClient ApiClient
+@inject UserSettingsService Settings
+
+<PageTitle>Redeem Types</PageTitle>
+
+<div class="page">
+    <h2 class="fw-bold mb-3">Redeem Types</h2>
+    <p class="text-muted">Create redemption options that deduct points (e.g., "1 hour iPad time").</p>
+
+    @if (_isLoading)
+    {
+        <div class="text-muted">Loading redeem types.</div>
+    }
+    else if (_parentId is null)
+    {
+        <div class="alert alert-info glass-panel">
+            Configure your parent account in <a href="/settings">Settings</a> first.
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Saved redeem types</h5>
+                        @if (_redeemTypes.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No redeem types yet. Add your first one using the form.</p>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var redeem in _redeemTypes)
+                                {
+                                    <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                        <div>
+                                            <div class="fw-semibold">@redeem.Name</div>
+                                            <span class="badge badge-bad">Redeem</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="fw-semibold points-negative">-@redeem.Points pts</div>
+                                            <button class="btn btn-link text-danger" @onclick='() => DeleteRedeemTypeAsync(redeem.Id)'>Remove</button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-5">
+                <div class="card card-elevated">
+                    <div class="card-body">
+                        <h5 class="card-title">Add a redeem type</h5>
+                        <EditForm Model="_form" OnValidSubmit="CreateRedeemTypeAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <InputText class="form-control" @bind-Value="_form.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Points (deducted)</label>
+                                <InputNumber class="form-control" @bind-Value="_form.Points" />
+                                <div class="form-text">Points are deducted from the child's balance.</div>
+                            </div>
+                            <button class="btn btn-primary w-100" type="submit" disabled="@_isSubmitting">@(_isSubmitting ? "Saving..." : "Create redeem type")</button>
+                        </EditForm>
+                        @if (!string.IsNullOrWhiteSpace(_feedback))
+                        {
+                            <div class="alert alert-warning mt-3">@_feedback</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+</div>
+
+@code {
+    private Guid? _parentId;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private readonly List<RedeemTypeDto> _redeemTypes = [];
+    private readonly RedeemTypeForm _form = new();
+    private string? _feedback;
+    private bool _autoLinkAttempted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _parentId = await ResolveParentIdAsync();
+        if (_parentId is null)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _feedback = null;
+        _redeemTypes.Clear();
+
+        try
+        {
+            _redeemTypes.AddRange(await ApiClient.GetRedeemTypesAsync(_parentId!.Value));
+        }
+        catch (Exception ex)
+        {
+            _feedback = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task CreateRedeemTypeAsync()
+    {
+        if (_parentId is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.Name))
+        {
+            _feedback = "Name is required";
+            return;
+        }
+
+        if (_form.Points <= 0)
+        {
+            _feedback = "Points must be greater than zero";
+            return;
+        }
+
+        _isSubmitting = true;
+        _feedback = null;
+
+        try
+        {
+            var points = Math.Abs(_form.Points);
+            await ApiClient.CreateRedeemTypeAsync(_parentId.Value, _form.Name.Trim(), points);
+            _form.Reset();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _feedback = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task DeleteRedeemTypeAsync(Guid redeemTypeId)
+    {
+        if (_parentId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await ApiClient.DeleteRedeemTypeAsync(_parentId.Value, redeemTypeId);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _feedback = ex.Message;
+        }
+    }
+
+    private async Task<Guid?> ResolveParentIdAsync()
+    {
+        var storedParent = await Settings.GetParentIdAsync();
+        var storedEmail = await Settings.GetParentEmailAsync();
+        try
+        {
+            var current = await ApiClient.GetCurrentParentAsync();
+            if (current is not null)
+            {
+                if (storedParent.HasValue && storedParent.Value != current.Id && !_autoLinkAttempted && !string.IsNullOrWhiteSpace(storedEmail))
+                {
+                    _autoLinkAttempted = true;
+                    try
+                    {
+                        var linked = await ApiClient.LinkParentAsync(storedEmail);
+                        await Settings.SetParentIdAsync(linked.Id);
+                        await Settings.SetParentEmailAsync(linked.Email);
+                        return linked.Id;
+                    }
+                    catch (Exception linkEx)
+                    {
+                        Console.WriteLine($"Auto-link failed: {linkEx.Message}");
+                    }
+                }
+
+                if (!storedParent.HasValue)
+                {
+                    await Settings.SetParentIdAsync(current.Id);
+                    await Settings.SetParentEmailAsync(current.Email);
+                }
+                return current.Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error resolving current parent: {ex.Message}");
+        }
+
+        return storedParent;
+    }
+
+    private sealed class RedeemTypeForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Points { get; set; } = 30;
+
+        public void Reset()
+        {
+            Name = string.Empty;
+            Points = 30;
+        }
+    }
+}

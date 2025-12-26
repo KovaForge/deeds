@@ -25,7 +25,6 @@
 			{
 				<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Open dashboard</button>
 			}
-			<button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("quickstart")'>Quick start</button>
 		</div>
 	</div>
 
@@ -55,16 +54,11 @@
 					<div class="stack">
 						<div>
 							<div class="step-label mb-1">Step 1</div>
-							<div class="fw-semibold">Link existing parent email</div>
-							<div class="text-muted small">Keep your earlier history by linking the email you used before signing in.</div>
-						</div>
-						<div>
-							<div class="step-label mb-1">Step 2</div>
 							<div class="fw-semibold">Add your children</div>
 							<div class="text-muted small">Set point values and reward rates in minutes.</div>
 						</div>
 						<div>
-							<div class="step-label mb-1">Step 3</div>
+							<div class="step-label mb-1">Step 2</div>
 							<div class="fw-semibold">Log a deed</div>
 							<div class="text-muted small">Track progress and balances instantly.</div>
 						</div>
@@ -134,16 +128,7 @@
 		{
 			<div class="content-section">
 				<div class="row g-4">
-					<div class="col-12 col-lg-4">
-						<div class="card card-elevated h-100">
-							<div class="card-body">
-								<h5 class="card-title">Total Family Balance</h5>
-								<p class="display-6 fw-bold">@_totalPoints pts</p>
-								<p class="text-muted mb-0">Equivalent to $@_totalDollars.ToString("F2")</p>
-							</div>
-						</div>
-					</div>
-					<div class="col-12 col-lg-8">
+					<div class="col-12">
 						<div class="card card-elevated h-100">
 							<div class="card-body">
 								<h5 class="card-title">Children Snapshot</h5>
@@ -179,8 +164,6 @@
 	private string? _loadErrorMessage;
 	private bool _dataRefreshAttempted;
 	private readonly List<ChildSummary> _children = [];
-	private int _totalPoints;
-	private decimal _totalDollars;
 	private bool _authRefreshed;
 	private bool _autoLinkAttempted;
 
@@ -235,9 +218,6 @@
 		_linkRequired = false;
 		_loadErrorMessage = null;
 		_children.Clear();
-		_totalPoints = 0;
-		_totalDollars = 0m;
-
 		try
 		{
 			var children = await ApiClient.GetChildrenAsync(_parentId.Value);
@@ -273,8 +253,6 @@
 				var points = balance?.Points ?? 0;
 				var dollars = balance?.Dollars ?? 0m;
 				_children.Add(new ChildSummary(child.Id, child.Name, points, dollars, deeds.Count));
-				_totalPoints += points;
-				_totalDollars += dollars;
 			}
 		}
 		catch (Exception ex)

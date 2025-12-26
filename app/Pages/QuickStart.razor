@@ -85,8 +85,8 @@
             <div class="form-grid">
                 <label>Child ID</label>
                 <input class="form-control" @bind="_redeemChildId" />
-                <label>Points to redeem</label>
-                <input class="form-control" type="number" step="1" min="1" @bind-value="_redeemPoints" @bind-value:event="oninput" />
+                <label>Redeem type ID</label>
+                <input class="form-control" @bind="_redeemTypeId" />
                 <label>Description (optional)</label>
                 <input class="form-control" @bind="_redeemDescription" />
                 <button class="btn btn-primary" @onclick="RedeemAsync" type="button" disabled="@(!_hasParent)">Redeem</button>
@@ -132,7 +132,7 @@
     private int? _deedPointsOverride;
     private string _deedNote = string.Empty;
     private string _redeemChildId = string.Empty;
-    private int _redeemPoints = 1;
+    private string _redeemTypeId = string.Empty;
     private string _redeemDescription = string.Empty;
     private string _balanceChildId = string.Empty;
     private string? _error;
@@ -296,15 +296,15 @@
             return;
         }
 
-        if (_redeemPoints <= 0)
+        if (!Guid.TryParse(_redeemTypeId, out var redeemTypeId))
         {
-            _error = "Points must be greater than zero";
+            _error = "Valid redeem type ID is required";
             return;
         }
 
         try
         {
-            _lastRedemption = await Api.CreateRedemptionAsync(_parent.Id, childId, _redeemPoints, _redeemDescription, ResolveCreatedBy());
+            _lastRedemption = await Api.CreateRedemptionAsync(_parent.Id, childId, redeemTypeId, _redeemDescription, ResolveCreatedBy());
             _success = "Redemption saved";
         }
         catch (Exception ex)
