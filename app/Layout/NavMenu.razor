@@ -48,6 +48,7 @@
     private bool collapseNavMenu = false;
     private AuthUser? _authUser;
     private readonly List<ChildDto> _children = [];
+    private bool _loadingChildren;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,20 +74,39 @@
 
     private async Task LoadChildrenAsync()
     {
+        if (_loadingChildren)
+        {
+            return;
+        }
+
+        _loadingChildren = true;
         _children.Clear();
         var parentId = await Settings.GetParentIdAsync();
         if (!parentId.HasValue)
         {
+            _loadingChildren = false;
             return;
         }
 
         try
         {
-            _children.AddRange(await ApiClient.GetChildrenAsync(parentId.Value));
+            var children = await ApiClient.GetChildrenAsync(parentId.Value);
+            var seen = new HashSet<Guid>();
+            foreach (var child in children)
+            {
+                if (seen.Add(child.Id))
+                {
+                    _children.Add(child);
+                }
+            }
         }
         catch
         {
             // Sidebar should not block rendering if children fail to load.
+        }
+        finally
+        {
+            _loadingChildren = false;
         }
     }
 
