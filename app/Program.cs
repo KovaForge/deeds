@@ -30,6 +30,7 @@ builder.Services.AddScoped<ApiClient>(_ => new ApiClient(new HttpClient
 {
 	BaseAddress = apiBaseUri
 }));
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<ChatGptService>();
 

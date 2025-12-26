@@ -1,6 +1,9 @@
-﻿<header class="top-nav navbar navbar-expand-lg navbar-dark bg-gradient">
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+<header class="top-nav navbar navbar-expand-lg navbar-dark bg-gradient">
     <div class="container-fluid">
-    <a class="navbar-brand fw-semibold" href="/">Good Deeds Tracker</a>
+        <a class="navbar-brand fw-semibold" href="/">Good Deeds Tracker</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -21,6 +24,19 @@
                 <li class="nav-item">
                     <NavLink class="nav-link" href="settings">Settings</NavLink>
                 </li>
+                <li class="nav-item d-flex align-items-center">
+                    @if (_authUser is null)
+                    {
+                        <a class="btn btn-outline-light btn-sm ms-lg-3" href="@LoginUrl">Sign in with Microsoft</a>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center gap-2 ms-lg-3">
+                            <span class="text-white-50 small">Hi, @_authUser.DisplayName</span>
+                            <a class="btn btn-outline-light btn-sm" href="@LogoutUrl">Sign out</a>
+                        </div>
+                    }
+                </li>
             </ul>
         </div>
     </div>
@@ -28,9 +44,33 @@
 
 @code {
     private bool collapseNavMenu = true;
+    private AuthUser? _authUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authUser = await Auth.GetUserAsync();
+    }
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private string LoginUrl => $"/.auth/login/aad?post_login_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
+
+    private string LogoutUrl => $"/.auth/logout?post_logout_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
+
+    private string ReturnPath
+    {
+        get
+        {
+            var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+            if (string.IsNullOrWhiteSpace(relative))
+            {
+                return "/";
+            }
+
+            return relative.StartsWith('/') ? relative : $"/{relative}";
+        }
     }
 }

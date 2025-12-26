@@ -100,6 +100,16 @@ The dev server defaults to `https://localhost:7032` (and `http://localhost:5269`
 3. Head to **Children** to manage children, then **Deed Types** to define reusable deeds.
 4. Open a child profile to log deeds, delete mistakes, trigger redemptions, and view balance history.
 
+## Microsoft Sign-In
+
+The client uses Azure Static Web Apps authentication endpoints (`/.auth/login/aad` and `/.auth/me`) to sign in and link a parent account by email. Configure Microsoft identity in your Static Web Apps resource and ensure the app registration allows the audience you want (work/school and optional personal Microsoft accounts).
+
+Required redirect URI:
+
+- `https://<your-app>.azurestaticapps.net/.auth/login/aad/callback`
+
+For local development, use the Static Web Apps CLI (`swa start`) if you need to test sign-in; otherwise the sign-in buttons will not return a user locally.
+
 ## REST API Summary
 
 | Method | Route | Description |

@@ -1,6 +1,8 @@
 @page "/settings"
 
 @inject ApiClient ApiClient
+@inject AuthService Auth
+@inject NavigationManager Navigation
 @inject UserSettingsService UserSettings
 
 <PageTitle>Settings</PageTitle>
@@ -14,6 +16,31 @@
             <div class="card-body">
                 <h5 class="card-title">Parent account</h5>
                 <p class="text-muted">We use this parent ID for every API call. Creating or linking a parent happens in your Azure Functions backend.</p>
+
+                <div class="alert alert-light border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <div class="fw-semibold">Microsoft sign-in</div>
+                        @if (_authUser is null)
+                        {
+                            <div class="text-muted small">Not signed in. Sign in to auto-link your parent account.</div>
+                        }
+                        else
+                        {
+                            <div class="text-muted small">Signed in as @_authUser.DisplayName (@(_authUser.Email ?? _authUser.UserDetails)).</div>
+                        }
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if (_authUser is null)
+                        {
+                            <a class="btn btn-outline-primary btn-sm" href="@LoginUrl">Sign in</a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-primary btn-sm" type="button" @onclick="LinkSignedInParentAsync" disabled="@_savingParent">Link this account</button>
+                            <a class="btn btn-outline-secondary btn-sm" href="@LogoutUrl">Sign out</a>
+                        }
+                    </div>
+                </div>
 
                 <EditForm Model="_parentForm" OnValidSubmit="SaveParentAsync">
                     <DataAnnotationsValidator />
@@ -83,6 +110,7 @@
     private readonly ParentForm _parentForm = new();
     private readonly ChatGptForm _chatGptForm = new();
 
+    private AuthUser? _authUser;
     private ParentDto? _currentParent;
     private bool _hasStoredParent;
     private bool _hasChatGptKey;
@@ -93,6 +121,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _authUser = await Auth.GetUserAsync();
         var parentId = await UserSettings.GetParentIdAsync();
         if (parentId is not null)
         {
@@ -102,6 +131,10 @@
             {
                 _parentForm.Email = _currentParent.Email;
             }
+        }
+        else if (string.IsNullOrWhiteSpace(_parentForm.Email) && _authUser?.Email is not null)
+        {
+            _parentForm.Email = _authUser.Email;
         }
         var apiKey = await UserSettings.GetChatGptKeyAsync();
         _hasChatGptKey = !string.IsNullOrWhiteSpace(apiKey);
@@ -165,6 +198,24 @@
         _parentFeedback = "Parent removed from this browser.";
     }
 
+    private async Task LinkSignedInParentAsync()
+    {
+        if (_authUser is null)
+        {
+            _parentFeedback = "Sign in with Microsoft to link your parent account.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_authUser.Email))
+        {
+            _parentFeedback = "Your Microsoft profile did not include an email address. Enter one manually.";
+            return;
+        }
+
+        _parentForm.Email = _authUser.Email;
+        await SaveParentAsync();
+    }
+
     private async Task SaveChatGptKeyAsync()
     {
         _savingChatGpt = true;
@@ -202,5 +253,23 @@
     private sealed class ChatGptForm
     {
         public string ApiKey { get; set; } = string.Empty;
+    }
+
+    private string LoginUrl => $"/.auth/login/aad?post_login_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
+
+    private string LogoutUrl => $"/.auth/logout?post_logout_redirect_uri={Uri.EscapeDataString(ReturnPath)}";
+
+    private string ReturnPath
+    {
+        get
+        {
+            var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+            if (string.IsNullOrWhiteSpace(relative))
+            {
+                return "/";
+            }
+
+            return relative.StartsWith('/') ? relative : $"/{relative}";
+        }
     }
 }
