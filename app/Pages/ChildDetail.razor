@@ -1,5 +1,6 @@
 @page "/children/{ChildId:guid}"
 
+@using System.Diagnostics
 @inject ApiClient ApiClient
 @inject AuthService Auth
 @inject UserSettingsService Settings
@@ -151,6 +152,11 @@
                 </div>
             </div>
         </div>
+
+        @if (_loadDurationMs.HasValue)
+        {
+            <div class="text-muted small mt-4">Page loaded in @_loadDurationMs.Value ms.</div>
+        }
     }
 </div>
 
@@ -174,6 +180,8 @@
     private string? _deedsLoadErrorMessage;
     private bool _deedTypesLoading;
     private bool _deedTypesLoaded;
+    private long? _loadDurationMs;
+    private Stopwatch? _loadTimer;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -184,10 +192,14 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        _loadTimer = Stopwatch.StartNew();
+        _loadDurationMs = null;
         _parentId = await ResolveParentIdAsync();
         if (_parentId is null)
         {
             _isLoading = false;
+            _loadTimer.Stop();
+            _loadDurationMs = _loadTimer.ElapsedMilliseconds;
             return;
         }
 
@@ -196,6 +208,9 @@
         {
             _ = LoadDeedTypesAsync();
         }
+
+        _loadTimer.Stop();
+        _loadDurationMs = _loadTimer.ElapsedMilliseconds;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
