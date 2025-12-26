@@ -67,9 +67,9 @@
                             <div class="mb-3">
                                 <h6 class="mb-2">AI points suggestion</h6>
                                 <p class="text-muted small mb-2">Describe the situation to get a suggested point adjustment for this new deed.</p>
-                                <label class="form-label">Condition or details</label>
-                                <InputTextArea class="form-control" @bind-Value="_suggestCondition" rows="3" placeholder="Describe the specific incident" />
-                                <button class="btn btn-outline-secondary w-100 mt-3" type="button" @onclick="SuggestPointsAsync" disabled="@(_suggesting || string.IsNullOrWhiteSpace(_form.Name) || string.IsNullOrWhiteSpace(_suggestCondition))">
+                                <label class="form-label">Condition or details (optional)</label>
+                                <InputTextArea class="form-control" @bind-Value="_suggestCondition" rows="3" placeholder="Describe the specific incident (optional)" />
+                                <button class="btn btn-outline-secondary w-100 mt-3" type="button" @onclick="SuggestPointsAsync" disabled="@(_suggesting || string.IsNullOrWhiteSpace(_form.Name))">
                                     @(_suggesting ? "Contacting AI..." : "Suggest points")
                                 </button>
                                 @if (!string.IsNullOrWhiteSpace(_suggestFeedback))
@@ -236,12 +236,6 @@
         if (string.IsNullOrWhiteSpace(_form.Name))
         {
             _suggestFeedback = "Enter a deed name first.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_suggestCondition))
-        {
-            _suggestFeedback = "Describe the specific condition first.";
             return;
         }
 
