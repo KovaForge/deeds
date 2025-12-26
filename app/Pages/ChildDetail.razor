@@ -162,7 +162,6 @@
     private readonly DeedForm _form = new();
     private string? _feedback;
     private bool _authRefreshed;
-    private bool _dataRefreshAttempted;
     private bool _linkRequired;
     private bool _autoLinkAttempted;
     private bool _deedsLoadError;
@@ -187,6 +186,10 @@
         }
 
         await LoadAsync();
+        if (!_deedTypesLoaded)
+        {
+            _ = LoadDeedTypesAsync();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -202,12 +205,7 @@
             await RefreshAuthAsync();
         }
 
-        if (_parentId is not null && !_deedTypesLoaded && !_isLoading && !_dataRefreshAttempted)
-        {
-            _dataRefreshAttempted = true;
-            _ = LoadDeedTypesAsync();
-            StateHasChanged();
-        }
+        StateHasChanged();
     }
 
     private async Task LoadAsync()
