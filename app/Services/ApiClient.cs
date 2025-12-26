@@ -402,6 +402,89 @@ public class ApiClient
         throw new InvalidOperationException(message);
     }
 
+    public async Task<InviteResponseDto> CreateParentInviteAsync(Guid parentId, string email, int? daysValid)
+    {
+        var response = await _http.PostAsJsonAsync($"parents/{parentId}/invites", new CreateParentInviteRequest(email, daysValid));
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<InviteResponseDto>())!;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to create invite (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task<IReadOnlyList<ParentInviteDto>> GetParentInvitesAsync(Guid parentId)
+    {
+        var response = await _http.GetAsync($"parents/{parentId}/invites");
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<List<ParentInviteDto>>()) ?? new List<ParentInviteDto>();
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<ParentInviteDto>();
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to load invites (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task CancelParentInviteAsync(Guid parentId, Guid inviteId)
+    {
+        var response = await _http.DeleteAsync($"parents/{parentId}/invites/{inviteId}");
+        if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to cancel invite (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task<AcceptInviteResponse?> AcceptInviteAsync(string token)
+    {
+        var response = await _http.PostAsJsonAsync("invites/accept", new AcceptInviteRequest(token));
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<AcceptInviteResponse>();
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to accept invite (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task<ProfileDto?> GetProfileAsync()
+    {
+        var response = await _http.GetAsync("profile");
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<ProfileDto>();
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to load profile (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task<ProfileDto> UpdateProfileAsync(string displayName)
+    {
+        var response = await _http.PostAsJsonAsync("profile", new UpdateProfileRequest(displayName));
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<ProfileDto>())!;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to update profile (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
     private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
     {
         try
