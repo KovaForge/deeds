@@ -182,6 +182,12 @@ public class DeedTypesFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
+        var deedUsage = await Data.CountDeedsUsingDeedType(_cs, deedTypeId);
+        if (deedUsage > 0)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Cannot delete this deed type while deeds still reference it. Delete those deeds first.");
+        }
+
         var removed = await Data.DeleteDeedType(_cs, deedTypeId);
         if (!removed)
         {

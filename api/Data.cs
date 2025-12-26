@@ -207,6 +207,13 @@ returning id, parent_id, name, dollar_per_point;";
     return await db.QuerySingleOrDefaultAsync<DeedTypeDto>(sql, new { ParentId = parentId, Name = name });
   }
 
+  public static async Task<int> CountDeedsUsingDeedType(string cs, Guid deedTypeId)
+  {
+    const string sql = "select count(*) from deeds where deed_type_id = @DeedTypeId";
+    await using var db = Conn(cs);
+    return await db.ExecuteScalarAsync<int>(sql, new { DeedTypeId = deedTypeId });
+  }
+
   public static async Task<DeedTypeDto> CreateDeedType(string cs, Guid parentId, string name, int points)
   {
     const string sql = @"
