@@ -14,6 +14,7 @@ public class RedeemTypesFunctions
         {
             throw new InvalidOperationException("Database connection string (DB environment variable) is not configured. Set the DB environment variable in Azure Static Web Apps configuration.");
         }
+        Data.EnsureSchema(_cs).GetAwaiter().GetResult();
     }
 
     [Function("CreateRedeemType")]
@@ -64,10 +65,17 @@ public class RedeemTypesFunctions
             return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Redeem type already exists");
         }
 
-        var created = await Data.CreateRedeemType(_cs, parentId, normalizedName, payload.Points);
-        var res = req.CreateResponse(HttpStatusCode.Created);
-        await res.WriteAsJsonAsync(created);
-        return res;
+        try
+        {
+            var created = await Data.CreateRedeemType(_cs, parentId, normalizedName, payload.Points);
+            var res = req.CreateResponse(HttpStatusCode.Created);
+            await res.WriteAsJsonAsync(created);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to create redeem type: {ex.Message}");
+        }
     }
 
     [Function("ListRedeemTypes")]
@@ -86,10 +94,17 @@ public class RedeemTypesFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        var items = await Data.GetRedeemTypesForParent(_cs, parentId);
-        var res = req.CreateResponse(HttpStatusCode.OK);
-        await res.WriteAsJsonAsync(items);
-        return res;
+        try
+        {
+            var items = await Data.GetRedeemTypesForParent(_cs, parentId);
+            var res = req.CreateResponse(HttpStatusCode.OK);
+            await res.WriteAsJsonAsync(items);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to list redeem types: {ex.Message}");
+        }
     }
 
     [Function("UpdateRedeemType")]
@@ -150,15 +165,22 @@ public class RedeemTypesFunctions
             return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Another redeem type with that name exists");
         }
 
-        var updated = await Data.UpdateRedeemType(_cs, redeemTypeId, normalizedName, payload.Points, payload.Active);
-        if (updated is null)
+        try
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
+            var updated = await Data.UpdateRedeemType(_cs, redeemTypeId, normalizedName, payload.Points, payload.Active);
+            if (updated is null)
+            {
+                return req.CreateResponse(HttpStatusCode.NotFound);
+            }
 
-        var res = req.CreateResponse(HttpStatusCode.OK);
-        await res.WriteAsJsonAsync(updated);
-        return res;
+            var res = req.CreateResponse(HttpStatusCode.OK);
+            await res.WriteAsJsonAsync(updated);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to update redeem type: {ex.Message}");
+        }
     }
 
     [Function("DeleteRedeemType")]
@@ -183,13 +205,20 @@ public class RedeemTypesFunctions
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        var removed = await Data.DeleteRedeemType(_cs, redeemTypeId);
-        if (!removed)
+        try
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
+            var removed = await Data.DeleteRedeemType(_cs, redeemTypeId);
+            if (!removed)
+            {
+                return req.CreateResponse(HttpStatusCode.NotFound);
+            }
 
-        return req.CreateResponse(HttpStatusCode.NoContent);
+            return req.CreateResponse(HttpStatusCode.NoContent);
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to delete redeem type: {ex.Message}");
+        }
     }
 
     private static async Task<HttpResponseData> CreateErrorResponse(HttpRequestData req, HttpStatusCode status, string message)

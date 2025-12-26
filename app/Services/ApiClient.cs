@@ -269,7 +269,8 @@ public class ApiClient
         }
 
         var error = await ReadErrorAsync(response);
-        throw new InvalidOperationException(error ?? "Unable to create redeem type");
+        var message = error ?? $"Unable to create redeem type (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
     }
 
     public async Task DeleteRedeemTypeAsync(Guid parentId, Guid redeemTypeId)
