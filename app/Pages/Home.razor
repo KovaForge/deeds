@@ -83,10 +83,10 @@ else if (_parentId is null)
 }
 else if (_children.Count == 0)
 {
-	<div class="glass-panel p-4 text-center">
+	<div class="card card-elevated p-4 text-center">
 		<h5 class="fw-semibold mb-2">No children added yet</h5>
 		<p class="text-muted">Add your first child to start tracking deeds and balances.</p>
-	<button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
+		<button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("children")'>Add a Child</button>
 	</div>
 }
 else
