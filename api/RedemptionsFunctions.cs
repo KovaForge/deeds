@@ -68,8 +68,13 @@ public class RedemptionsFunctions
         }
 
         var description = string.IsNullOrWhiteSpace(payload.Description) ? null : payload.Description.Trim();
-        var createdBy = string.IsNullOrWhiteSpace(payload.CreatedBy) ? parentId.ToString() : payload.CreatedBy.Trim();
-        var created = await Data.CreateRedemption(_cs, payload.ChildId, payload.Points, description, createdBy, DateTimeOffset.UtcNow);
+        var createdById = parentId;
+        if (!string.IsNullOrWhiteSpace(payload.CreatedBy) && Guid.TryParse(payload.CreatedBy.Trim(), out var parsedCreatedBy))
+        {
+            createdById = parsedCreatedBy;
+        }
+
+        var created = await Data.CreateRedemption(_cs, payload.ChildId, payload.Points, description, createdById, DateTimeOffset.UtcNow);
         var res = req.CreateResponse(HttpStatusCode.Created);
         await res.WriteAsJsonAsync(created);
         return res;

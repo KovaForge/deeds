@@ -70,11 +70,15 @@ public class DeedsFunctions
 
         var note = string.IsNullOrWhiteSpace(payload.Note) ? null : payload.Note.Trim();
         var occurredAt = DateTimeOffset.UtcNow;
-        var createdBy = string.IsNullOrWhiteSpace(payload.CreatedBy) ? parentId.ToString() : payload.CreatedBy.Trim();
+        var createdById = parentId;
+        if (!string.IsNullOrWhiteSpace(payload.CreatedBy) && Guid.TryParse(payload.CreatedBy.Trim(), out var parsedCreatedBy))
+        {
+            createdById = parsedCreatedBy;
+        }
 
         try
         {
-            var created = await Data.CreateDeed(_cs, payload.ChildId, payload.DeedTypeId, points, note, createdBy, occurredAt);
+            var created = await Data.CreateDeed(_cs, payload.ChildId, payload.DeedTypeId, points, note, createdById, occurredAt);
             var res = req.CreateResponse(HttpStatusCode.Created);
             await res.WriteAsJsonAsync(created);
             return res;

@@ -231,12 +231,12 @@ returning id as Id, parent_id as ParentId, name as Name, points as Points, activ
     return affected > 0;
   }
 
-  public static async Task<DeedDto> CreateDeed(string cs, Guid childId, Guid deedTypeId, int points, string? note, string createdBy, DateTimeOffset occurredAt)
+  public static async Task<DeedDto> CreateDeed(string cs, Guid childId, Guid deedTypeId, int points, string? note, Guid createdBy, DateTimeOffset occurredAt)
   {
     const string sql = @"
 insert into deeds(id, child_id, deed_type_id, points, note, occurred_at, created_by)
 values(@Id, @ChildId, @DeedTypeId, @Points, @Note, @OccurredAt, @CreatedBy)
-returning id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by as CreatedBy;";
+returning id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by::text as CreatedBy;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -255,10 +255,10 @@ returning id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as P
   public static async Task<IEnumerable<DeedDto>> GetDeedsForChild(string cs, Guid childId)
   {
     const string sql = @"
-select id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by as CreatedBy
-from deeds
-where child_id = @ChildId
-order by occurred_at desc;";
+  select id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by::text as CreatedBy
+  from deeds
+  where child_id = @ChildId
+  order by occurred_at desc;";
 
     await using var db = Conn(cs);
     return await db.QueryAsync<DeedDto>(sql, new { ChildId = childId });
@@ -267,8 +267,8 @@ order by occurred_at desc;";
   public static async Task<DeedDto?> GetDeedById(string cs, Guid deedId)
   {
     const string sql = @"
-select id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by as CreatedBy
-from deeds where id = @Id";
+  select id as Id, child_id as ChildId, deed_type_id as DeedTypeId, points as Points, note as Note, occurred_at as OccurredAt, created_by::text as CreatedBy
+  from deeds where id = @Id";
 
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<DeedDto>(sql, new { Id = deedId });
@@ -301,12 +301,12 @@ where d.id = @Id";
     return await db.QuerySingleOrDefaultAsync<DeedTypeDetails>(sql, new { Id = deedTypeId });
   }
 
-  public static async Task<RedemptionDto> CreateRedemption(string cs, Guid childId, int points, string? description, string createdBy, DateTimeOffset createdAt)
+  public static async Task<RedemptionDto> CreateRedemption(string cs, Guid childId, int points, string? description, Guid createdBy, DateTimeOffset createdAt)
   {
     const string sql = @"
 insert into redemptions(id, child_id, points, description, created_at, created_by)
 values(@Id, @ChildId, @Points, @Description, @CreatedAt, @CreatedBy)
-returning id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by as CreatedBy;";
+returning id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by::text as CreatedBy;";
 
     await using var db = Conn(cs);
     var id = Guid.NewGuid();
@@ -324,10 +324,10 @@ returning id as Id, child_id as ChildId, points as Points, description as Descri
   public static async Task<IEnumerable<RedemptionDto>> GetRedemptionsForChild(string cs, Guid childId)
   {
     const string sql = @"
-select id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by as CreatedBy
-from redemptions
-where child_id = @ChildId
-order by created_at desc;";
+  select id as Id, child_id as ChildId, points as Points, description as Description, created_at as CreatedAt, created_by::text as CreatedBy
+  from redemptions
+  where child_id = @ChildId
+  order by created_at desc;";
 
     await using var db = Conn(cs);
     return await db.QueryAsync<RedemptionDto>(sql, new { ChildId = childId });
@@ -374,7 +374,7 @@ from (
        (d.points * c.dollar_per_point) as dollar_value,
        d.note,
        d.occurred_at,
-       d.created_by as recorded_by
+       d.created_by::text as recorded_by
   from deeds d
   join children c on c.id = d.child_id
   where d.child_id = @ChildId
@@ -386,7 +386,7 @@ from (
        (-r.points * c.dollar_per_point) as dollar_value,
        r.description,
        r.created_at,
-       r.created_by
+       r.created_by::text as recorded_by
   from redemptions r
   join children c on c.id = r.child_id
   where r.child_id = @ChildId
