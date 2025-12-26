@@ -154,6 +154,8 @@ else
     private readonly DeedForm _form = new();
     private string? _feedback;
     private string? _suggestionReason;
+    private bool _authRefreshed;
+    private bool _dataRefreshAttempted;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -172,6 +174,27 @@ else
         }
 
         await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        if (_authUser is null && !_authRefreshed)
+        {
+            _authRefreshed = true;
+            await RefreshAuthAsync();
+        }
+
+        if (_parentId is not null && _deedTypes.Count == 0 && !_isLoading && !_dataRefreshAttempted)
+        {
+            _dataRefreshAttempted = true;
+            await LoadAsync();
+            StateHasChanged();
+        }
     }
 
     private async Task LoadAsync()
@@ -219,6 +242,17 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task RefreshAuthAsync()
+    {
+        Auth.ClearCache();
+        _authUser = await Auth.GetUserAsync();
+        var latestParent = await Settings.GetParentIdAsync();
+        if (latestParent != _parentId)
+        {
+            _parentId = latestParent;
         }
     }
 

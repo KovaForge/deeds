@@ -84,6 +84,18 @@
 			</div>
 		</div>
 	}
+	else if (_loadError)
+	{
+		<div class="content-section">
+			<div class="card card-elevated">
+				<div class="card-body">
+					<h5 class="fw-semibold mb-2">We couldn't load your dashboard yet</h5>
+					<p class="text-muted mb-3">Finish signing in and try again in a moment.</p>
+					<button class="btn btn-primary" @onclick="LoadDashboardAsync">Retry loading</button>
+				</div>
+			</div>
+		</div>
+	}
 	else if (_children.Count == 0)
 	{
 		<div class="content-section">
@@ -140,19 +152,69 @@
 	private Guid? _parentId;
 	private AuthUser? _authUser;
 	private bool _isLoading = true;
+	private bool _loadError;
+	private bool _dataRefreshAttempted;
 	private readonly List<ChildSummary> _children = [];
 	private int _totalPoints;
 	private decimal _totalDollars;
+	private bool _authRefreshed;
 
 	protected override async Task OnInitializedAsync()
 	{
 		_authUser = await Auth.GetUserAsync();
 		_parentId = await Settings.GetParentIdAsync();
+		await LoadDashboardAsync();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender || _authRefreshed || _authUser is not null)
+		{
+			return;
+		}
+
+		_authRefreshed = true;
+		await RefreshAuthAsync();
+	}
+
+	private async Task RefreshAuthAsync()
+	{
+		Auth.ClearCache();
+		var latest = await Auth.GetUserAsync();
+		if (!Equals(latest, _authUser))
+		{
+			_authUser = latest;
+			StateHasChanged();
+		}
+
+		var latestParentId = await Settings.GetParentIdAsync();
+		if (latestParentId != _parentId)
+		{
+			_parentId = latestParentId;
+		}
+
+		if (_parentId is not null && !_dataRefreshAttempted && (_children.Count == 0 || _loadError))
+		{
+			_dataRefreshAttempted = true;
+			await LoadDashboardAsync();
+			StateHasChanged();
+		}
+	}
+
+	private async Task LoadDashboardAsync()
+	{
 		if (_parentId is null)
 		{
 			_isLoading = false;
+			_loadError = false;
 			return;
 		}
+
+		_isLoading = true;
+		_loadError = false;
+		_children.Clear();
+		_totalPoints = 0;
+		_totalDollars = 0m;
 
 		try
 		{
@@ -179,6 +241,7 @@
 		}
 		catch (Exception ex)
 		{
+			_loadError = true;
 			// Log error but keep UI functional
 			Console.WriteLine($"Dashboard error: {ex.Message}");
 		}
