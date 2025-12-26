@@ -76,6 +76,10 @@
                                     </select>
                                 }
                             </div>
+                            @if (_deedTypesLoading)
+                            {
+                                <div class="text-muted small mb-3">Loading deed types.</div>
+                            }
                             <div class="mb-3">
                                 <label class="form-label">Condition or details</label>
                                 <InputTextArea class="form-control" @bind-Value="_form.Condition" rows="2" placeholder="Describe the specific incident, e.g., 'Did it on first ask without complaining'" />
@@ -174,6 +178,8 @@
     private bool _autoLinkAttempted;
     private bool _deedsLoadError;
     private string? _deedsLoadErrorMessage;
+    private bool _deedTypesLoading;
+    private bool _deedTypesLoaded;
 
     private string BalanceClass => (_balance?.Points ?? 0) >= 0 ? "points-positive" : "points-negative";
 
@@ -207,10 +213,10 @@
             await RefreshAuthAsync();
         }
 
-        if (_parentId is not null && _deedTypes.Count == 0 && !_isLoading && !_dataRefreshAttempted)
+        if (_parentId is not null && !_deedTypesLoaded && !_isLoading && !_dataRefreshAttempted)
         {
             _dataRefreshAttempted = true;
-            await LoadAsync();
+            _ = LoadDeedTypesAsync();
             StateHasChanged();
         }
     }
@@ -223,7 +229,6 @@
         _deedsLoadError = false;
         _deedsLoadErrorMessage = null;
         _deeds.Clear();
-        _deedTypes.Clear();
 
         try
         {
@@ -245,27 +250,6 @@
 
             try
             {
-                _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
-            }
-            catch (Exception deedTypeEx)
-            {
-                Console.WriteLine($"Error loading deed types: {deedTypeEx.Message}");
-                _feedback = $"Could not load deed types: {deedTypeEx.Message}";
-            }
-
-            if (_deedTypes.Count > 0 && _form.DeedTypeId == Guid.Empty)
-            {
-                var first = _deedTypes.First();
-                _form.DeedTypeId = first.Id;
-                _form.Points = first.Points;
-            }
-            else if (_deedTypes.Count == 0 && _linkRequired)
-            {
-                _feedback = "Your Microsoft sign-in doesn't match the saved parent account. Link your existing parent email in Settings to access deed types.";
-            }
-
-            try
-            {
                 _deeds.AddRange(await ApiClient.GetDeedsForChildAsync(ChildId, parentId));
             }
             catch (Exception deedEx)
@@ -283,6 +267,46 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task LoadDeedTypesAsync()
+    {
+        if (_parentId is null || _deedTypesLoading)
+        {
+            return;
+        }
+
+        _deedTypesLoading = true;
+        _deedTypesLoaded = false;
+        _deedTypes.Clear();
+
+        try
+        {
+            var parentId = _parentId.Value;
+            _deedTypes.AddRange(await ApiClient.GetDeedTypesAsync(parentId));
+            _deedTypesLoaded = true;
+
+            if (_deedTypes.Count > 0 && _form.DeedTypeId == Guid.Empty)
+            {
+                var first = _deedTypes.First();
+                _form.DeedTypeId = first.Id;
+                _form.Points = first.Points;
+            }
+            else if (_deedTypes.Count == 0 && _linkRequired)
+            {
+                _feedback = "Your Microsoft sign-in doesn't match the saved parent account. Link your existing parent email in Settings to access deed types.";
+            }
+        }
+        catch (Exception deedTypeEx)
+        {
+            Console.WriteLine($"Error loading deed types: {deedTypeEx.Message}");
+            _feedback = $"Could not load deed types: {deedTypeEx.Message}";
+        }
+        finally
+        {
+            _deedTypesLoading = false;
+            StateHasChanged();
         }
     }
 
