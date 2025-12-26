@@ -72,10 +72,17 @@ public class DeedsFunctions
         var occurredAt = DateTimeOffset.UtcNow;
         var createdBy = string.IsNullOrWhiteSpace(payload.CreatedBy) ? parentId.ToString() : payload.CreatedBy.Trim();
 
-        var created = await Data.CreateDeed(_cs, payload.ChildId, payload.DeedTypeId, points, note, createdBy, occurredAt);
-        var res = req.CreateResponse(HttpStatusCode.Created);
-        await res.WriteAsJsonAsync(created);
-        return res;
+        try
+        {
+            var created = await Data.CreateDeed(_cs, payload.ChildId, payload.DeedTypeId, points, note, createdBy, occurredAt);
+            var res = req.CreateResponse(HttpStatusCode.Created);
+            await res.WriteAsJsonAsync(created);
+            return res;
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to create deed: {ex.Message}");
+        }
     }
 
     [Function("ListDeedsForChild")]
