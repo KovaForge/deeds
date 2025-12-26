@@ -109,6 +109,10 @@ a, .btn-link {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-height: 100vh;
+    border-right: 1px solid var(--page-border);
+    position: sticky;
+    top: 0;
 }
 
 .brand {
