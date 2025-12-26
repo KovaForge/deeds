@@ -237,11 +237,21 @@ code {
     box-shadow: 0 30px 60px var(--page-shadow);
 }
 
+.hero-splash-bg {
+    background:
+        url('/img/background.png') left center / contain no-repeat,
+        linear-gradient(135deg, #1b264a 0%, #10182a 100%);
+}
+
 .hero-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 2rem;
     align-items: center;
+}
+
+.hero-copy {
+    max-width: 560px;
 }
 
 .hero-title {
@@ -280,4 +290,16 @@ code {
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--page-accent-strong);
+}
+
+@media (max-width: 768px) {
+    .hero-splash {
+        padding: 2rem;
+    }
+
+    .hero-splash-bg {
+        background:
+            url('/img/background.png') center top / cover no-repeat,
+            linear-gradient(135deg, #1b264a 0%, #10182a 100%);
+    }
 }
