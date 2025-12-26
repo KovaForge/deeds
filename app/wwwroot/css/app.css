@@ -2,6 +2,21 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+:root {
+    color-scheme: dark;
+    --page-bg: #0b1020;
+    --page-surface: #121a30;
+    --page-surface-strong: #182341;
+    --page-surface-soft: #10182a;
+    --page-border: rgba(140, 160, 220, 0.18);
+    --page-text: #eef2ff;
+    --page-muted: #b9c2dd;
+    --page-accent: #6b7cff;
+    --page-accent-strong: #8aa2ff;
+    --page-link: #9fb2ff;
+    --page-shadow: rgba(8, 12, 28, 0.6);
+}
+
 .page[b-aikm9ua061] {
     position: relative;
     display: flex;
@@ -27,14 +42,24 @@ h1:focus {
 }
 
 a, .btn-link {
-    color: #0071c1;
+    color: var(--page-link);
 }
 
 .btn-primary {
-    color: #fff;
-    background-image: linear-gradient(135deg, #5b6df7, #3c52d9);
+    color: #0b1020;
+    background-image: linear-gradient(135deg, #9fb2ff, #6b7cff);
     border: none;
-    box-shadow: 0 8px 16px rgba(60, 82, 217, 0.35);
+    box-shadow: 0 12px 24px rgba(55, 75, 190, 0.45);
+}
+
+.btn-outline-secondary {
+    color: var(--page-text);
+    border-color: rgba(190, 205, 255, 0.35);
+}
+
+.btn-outline-secondary:hover {
+    background-color: rgba(107, 124, 255, 0.15);
+    color: var(--page-text);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
@@ -43,6 +68,15 @@ a, .btn-link {
 
 .content {
     padding-top: 1.1rem;
+}
+
+body {
+    background: radial-gradient(circle at top, #1c2546 0%, #0b1020 45%, #090d1a 100%);
+    color: var(--page-text);
+}
+
+.text-muted {
+    color: var(--page-muted) !important;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -124,40 +158,126 @@ code {
 }
 
 .hero-card {
-    background: linear-gradient(135deg, #ffffff, #eef1ff);
+    background: linear-gradient(135deg, #182341, #121a30);
     border-radius: 1rem;
     padding: 2rem;
-    box-shadow: 0 15px 35px rgba(60, 82, 217, 0.15);
-    border: 0;
+    box-shadow: 0 24px 48px rgba(8, 12, 28, 0.45);
+    border: 1px solid var(--page-border);
 }
 
 .card-elevated {
-    border: none;
+    border: 1px solid var(--page-border);
     border-radius: 1rem;
-    box-shadow: 0 12px 30px rgba(15, 35, 95, 0.08);
+    background: var(--page-surface);
+    box-shadow: 0 18px 40px rgba(8, 12, 28, 0.5);
 }
 
 .badge-good {
-    background-color: rgba(76, 201, 240, 0.2);
-    color: #1d8aad;
+    background-color: rgba(118, 214, 255, 0.2);
+    color: #86d8ff;
 }
 
 .badge-bad {
-    background-color: rgba(255, 99, 132, 0.2);
-    color: #c43b59;
+    background-color: rgba(255, 118, 150, 0.2);
+    color: #ff9bb4;
 }
 
 .points-positive {
-    color: #1b8554;
+    color: #5fe0a7;
 }
 
 .points-negative {
-    color: #c43b59;
+    color: #ff809c;
 }
 
 .glass-panel {
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(19, 28, 52, 0.75);
     backdrop-filter: blur(12px);
     border-radius: 1rem;
-    box-shadow: 0 18px 40px rgba(40, 70, 150, 0.12);
+    box-shadow: 0 18px 40px rgba(8, 12, 28, 0.45);
+    border: 1px solid var(--page-border);
+}
+
+.page-shell {
+    position: relative;
+    padding: 2rem 0 3rem;
+}
+
+.page-shell::before,
+.page-shell::after {
+    content: "";
+    position: absolute;
+    width: 320px;
+    height: 320px;
+    border-radius: 999px;
+    filter: blur(60px);
+    opacity: 0.6;
+    z-index: 0;
+}
+
+.page-shell::before {
+    top: -120px;
+    right: -40px;
+    background: rgba(120, 140, 255, 0.4);
+}
+
+.page-shell::after {
+    bottom: -140px;
+    left: -40px;
+    background: rgba(70, 170, 255, 0.3);
+}
+
+.hero-splash {
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(135deg, #1b264a 0%, #10182a 100%);
+    border-radius: 1.5rem;
+    padding: 2.5rem;
+    border: 1px solid var(--page-border);
+    box-shadow: 0 30px 60px var(--page-shadow);
+}
+
+.hero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 2rem;
+    align-items: center;
+}
+
+.hero-title {
+    font-size: clamp(2rem, 2.8vw, 3rem);
+    line-height: 1.1;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.hero-panel {
+    background: var(--page-surface-strong);
+    border: 1px solid var(--page-border);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+}
+
+.onboard-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.step-card {
+    background: var(--page-surface-soft);
+    border: 1px solid var(--page-border);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--page-accent-strong);
 }
