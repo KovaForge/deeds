@@ -216,7 +216,7 @@ code {
 
 .page-shell {
     position: relative;
-    padding: 2rem 0 3rem;
+    padding: 0 0 3rem;
 }
 
 .page-shell::before,
@@ -227,7 +227,7 @@ code {
     height: 320px;
     border-radius: 999px;
     filter: blur(60px);
-    opacity: 0.6;
+    opacity: 0.45;
     z-index: 0;
 }
 
@@ -246,17 +246,17 @@ code {
 .hero-splash {
     position: relative;
     z-index: 1;
-    background: linear-gradient(135deg, #1b264a 0%, #10182a 100%);
-    border-radius: 1.5rem;
-    padding: 2.5rem;
-    border: 1px solid var(--page-border);
-    box-shadow: 0 30px 60px var(--page-shadow);
+    background: linear-gradient(135deg, #121a30 0%, #0b1020 100%);
+    border-radius: 0;
+    padding: 3rem 2.5rem;
+    border: none;
+    box-shadow: none;
 }
 
 .hero-splash-bg {
     background:
         url('/img/background.png') left center / contain no-repeat,
-        linear-gradient(135deg, #1b264a 0%, #10182a 100%);
+        linear-gradient(135deg, #121a30 0%, #0b1020 100%);
 }
 
 .hero-grid {
@@ -283,9 +283,9 @@ code {
 }
 
 .hero-panel {
-    background: var(--page-surface-strong);
+    background: rgba(18, 26, 48, 0.8);
     border: 1px solid var(--page-border);
-    border-radius: 1.25rem;
+    border-radius: 0.75rem;
     padding: 1.5rem;
 }
 
@@ -310,12 +310,12 @@ code {
 
 @media (max-width: 768px) {
     .hero-splash {
-        padding: 2rem;
+        padding: 2rem 1.5rem;
     }
 
     .hero-splash-bg {
         background:
             url('/img/background.png') center top / cover no-repeat,
-            linear-gradient(135deg, #1b264a 0%, #10182a 100%);
+            linear-gradient(135deg, #121a30 0%, #0b1020 100%);
     }
 }
