@@ -188,13 +188,20 @@ public class DeedTypesFunctions
             return await CreateErrorResponse(req, HttpStatusCode.Conflict, "Cannot delete this deed type while deeds still reference it. Delete those deeds first.");
         }
 
-        var removed = await Data.DeleteDeedType(_cs, deedTypeId);
-        if (!removed)
+        try
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
+            var removed = await Data.DeleteDeedType(_cs, deedTypeId);
+            if (!removed)
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Deed type not found");
+            }
 
-        return req.CreateResponse(HttpStatusCode.NoContent);
+            return req.CreateResponse(HttpStatusCode.NoContent);
+        }
+        catch (Exception ex)
+        {
+            return await CreateErrorResponse(req, HttpStatusCode.InternalServerError, $"Failed to delete deed type: {ex.Message}");
+        }
     }
 
     private static async Task<HttpResponseData> CreateErrorResponse(HttpRequestData req, HttpStatusCode status, string message)

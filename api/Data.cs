@@ -403,7 +403,7 @@ where d.id = @Id";
 
   public static async Task<DeedTypeDetails?> GetDeedTypeDetails(string cs, Guid deedTypeId)
   {
-    const string sql = "select id, parent_id from deed_types where id = @Id";
+    const string sql = "select id as Id, parent_id as ParentId from deed_types where id = @Id";
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<DeedTypeDetails>(sql, new { Id = deedTypeId });
   }
