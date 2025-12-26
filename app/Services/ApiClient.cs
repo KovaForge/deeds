@@ -411,6 +411,19 @@ public class ApiClient
         }
         catch
         {
+            try
+            {
+                var raw = await response.Content.ReadAsStringAsync();
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    return raw.Trim();
+                }
+            }
+            catch
+            {
+                // Ignore secondary failures to avoid masking the original error.
+            }
+
             return null;
         }
     }

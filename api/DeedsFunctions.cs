@@ -117,25 +117,25 @@ public class DeedsFunctions
         Guid childId,
         Guid deedId)
     {
-        if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var parentError))
-        {
-            return parentError;
-        }
-
-        var child = await Data.GetChildById(_cs, childId);
-        if (child is null)
-        {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        var details = await Data.GetDeedDetails(_cs, deedId);
-        if (details is null || details.ChildId != childId || details.ParentId != parentId)
-        {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
         try
         {
+            if (!ParentGuard.TryGetParent(req, _cs, out var parentId, out var parentError))
+            {
+                return parentError;
+            }
+
+            var child = await Data.GetChildById(_cs, childId);
+            if (child is null)
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Child not found");
+            }
+
+            var details = await Data.GetDeedDetails(_cs, deedId);
+            if (details is null || details.ChildId != childId || details.ParentId != parentId)
+            {
+                return await CreateErrorResponse(req, HttpStatusCode.NotFound, "Deed not found for this child");
+            }
+
             var removed = await Data.DeleteDeed(_cs, deedId);
             if (!removed)
             {
