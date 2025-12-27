@@ -41,23 +41,21 @@
 		</div>
 	</div>
 
-	<div class="row g-4 mb-4">
-		<div class="col-12">
-			<div class="card card-elevated h-100">
-				<div class="card-body">
-					<h5 class="card-title">Sign in with Microsoft</h5>
-					<p class="text-muted">Use your Microsoft account to sync settings and keep your family data secure.</p>
-					@if (_authUser is null)
-					{
-						<a class="btn btn-primary w-100 mb-3" href="@LoginUrl">Continue with Microsoft</a>
-						<div class="text-muted small">Already have a parent email saved? Link it in <a href="settings">Settings</a> after signing in.</div>
-					}
-					else
-					{
-						<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
-						<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
-					}
-				</div>
+	<div class="mb-4">
+		<div class="card card-elevated">
+			<div class="card-body">
+				<h5 class="card-title">Sign in with Microsoft</h5>
+				<p class="text-muted">Use your Microsoft account to sync settings and keep your family data secure.</p>
+				@if (_authUser is null)
+				{
+					<a class="btn btn-primary w-100 mb-3" href="@LoginUrl">Continue with Microsoft</a>
+					<div class="text-muted small">Already have a parent email saved? Link it in <a href="settings">Settings</a> after signing in.</div>
+				}
+				else
+				{
+					<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
+					<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
+				}
 			</div>
 		</div>
 	</div>
