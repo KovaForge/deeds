@@ -411,6 +411,10 @@ textarea,
         grid-template-columns: 1fr;
     }
 
+    .layout-shell {
+        grid-template-columns: 1fr !important;
+    }
+
     .sidebar {
         position: sticky;
         top: 0;
@@ -418,6 +422,7 @@ textarea,
         width: 100%;
         min-height: auto;
         padding: 16px;
+        flex: 1 1 auto;
     }
 
     .nav-toggle {
@@ -466,5 +471,4 @@ textarea,
     .form-select {
         font-size: 16px;
     }
-}
 }

@@ -11,3 +11,13 @@
     padding: 28px 32px;
     background: var(--page-bg);
 }
+
+@media (max-width: 900px) {
+    .layout-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .content {
+        padding: 16px;
+    }
+}
