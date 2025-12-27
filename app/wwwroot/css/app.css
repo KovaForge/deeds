@@ -125,8 +125,8 @@ main.content {
 }
 
 .layout-shell {
-    display: grid !important;
-    grid-template-columns: 240px minmax(0, 1fr) !important;
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
     min-height: 100vh;
     align-items: start;
     background: var(--page-bg);
