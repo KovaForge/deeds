@@ -115,7 +115,7 @@
                                     <div class="fw-semibold">Share this link</div>
                                     <div class="d-flex flex-column gap-2 mt-2">
                                         <input class="form-control" value="@_inviteLink" readonly onfocus="this.select()" />
-                                        <button class="btn btn-outline-secondary btn-sm align-self-start" type="button" @onclick="CopyInviteAsync">Copy link</button>
+                                        <button class="btn btn-primary align-self-start" type="button" @onclick="CopyInviteAsync">Copy link</button>
                                         @if (!string.IsNullOrWhiteSpace(_inviteToken))
                                         {
                                             <div class="small text-muted">Token: @_inviteToken</div>
