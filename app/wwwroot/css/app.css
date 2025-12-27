@@ -411,10 +411,6 @@ textarea,
         grid-template-columns: 1fr;
     }
 
-    .layout-shell {
-        grid-template-columns: 1fr !important;
-    }
-
     .sidebar {
         position: sticky;
         top: 0;
