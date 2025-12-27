@@ -16,13 +16,33 @@
 			<p class="text-muted mb-0">
 				Track good deeds, adjust points quickly, and keep every child focused on what matters.
 			</p>
+			@if (_authUser is null)
+			{
+				<div class="card card-elevated mt-3">
+					<div class="card-body">
+						<h5 class="card-title">Getting started</h5>
+						<div class="stack">
+							<div>
+								<div class="step-label mb-1">Step 1</div>
+								<div class="fw-semibold">Add your children</div>
+								<div class="text-muted small">Set point values and reward rates in minutes.</div>
+							</div>
+							<div>
+								<div class="step-label mb-1">Step 2</div>
+								<div class="fw-semibold">Log a deed</div>
+								<div class="text-muted small">Track progress and balances instantly.</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
 		</div>
 		<div class="d-flex gap-2 flex-wrap">
 		</div>
 	</div>
 
 	<div class="row g-4 mb-4">
-		<div class="col-12 col-lg-7">
+		<div class="col-12">
 			<div class="card card-elevated h-100">
 				<div class="card-body">
 					<h5 class="card-title">Sign in with Microsoft</h5>
@@ -37,25 +57,6 @@
 						<div class="alert alert-success">Signed in as @_authUser.DisplayName</div>
 						<button class="btn btn-outline-secondary w-100" @onclick='() => Navigation.NavigateTo("settings")'>Manage linked account</button>
 					}
-				</div>
-			</div>
-		</div>
-		<div class="col-12 col-lg-5">
-			<div class="card card-elevated h-100">
-				<div class="card-body">
-					<h5 class="card-title">Getting started</h5>
-					<div class="stack">
-						<div>
-							<div class="step-label mb-1">Step 1</div>
-							<div class="fw-semibold">Add your children</div>
-							<div class="text-muted small">Set point values and reward rates in minutes.</div>
-						</div>
-						<div>
-							<div class="step-label mb-1">Step 2</div>
-							<div class="fw-semibold">Log a deed</div>
-							<div class="text-muted small">Track progress and balances instantly.</div>
-						</div>
-					</div>
 				</div>
 			</div>
 		</div>
