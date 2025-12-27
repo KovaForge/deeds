@@ -125,8 +125,8 @@ main.content {
 }
 
 .layout-shell {
-    display: grid !important;
-    grid-template-columns: 240px minmax(0, 1fr) !important;
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
     min-height: 100vh;
     align-items: start;
     background: var(--page-bg);
@@ -198,6 +198,12 @@ main.content {
     background: linear-gradient(120deg, var(--page-accent), var(--page-accent-strong));
     color: #0b1021;
     font-weight: 700;
+}
+
+@media (min-width: 901px) {
+    .nav.collapsed {
+        display: flex;
+    }
 }
 
 .auth-block {
@@ -409,6 +415,10 @@ textarea,
         position: sticky;
         top: 0;
         z-index: 10;
+        width: 100%;
+        min-height: auto;
+        padding: 16px;
+        flex: 1 1 auto;
     }
 
     .nav-toggle {
@@ -420,7 +430,41 @@ textarea,
         display: none;
     }
 
+    .nav {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-right: 6px;
+    }
+
+    .nav-children {
+        margin-left: 0;
+        padding-left: 12px;
+        border-left: 1px solid var(--page-border);
+    }
+
     .content {
-        padding: 24px 20px;
+        padding: 16px;
+    }
+
+    .page {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .card-elevated,
+    .glass-panel {
+        border-radius: 12px;
+    }
+
+    .list-group-item {
+        padding: 12px;
+    }
+
+    input,
+    select,
+    textarea,
+    .form-control,
+    .form-select {
+        font-size: 16px;
     }
 }
