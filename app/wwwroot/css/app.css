@@ -409,6 +409,9 @@ textarea,
         position: sticky;
         top: 0;
         z-index: 10;
+        width: 100%;
+        min-height: auto;
+        padding: 16px;
     }
 
     .nav-toggle {
@@ -418,6 +421,18 @@ textarea,
 
     .nav.collapsed {
         display: none;
+    }
+
+    .nav {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-right: 6px;
+    }
+
+    .nav-children {
+        margin-left: 0;
+        padding-left: 12px;
+        border-left: 1px solid var(--page-border);
     }
 
     .content {
