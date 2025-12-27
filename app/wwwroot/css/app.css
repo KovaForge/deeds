@@ -200,6 +200,12 @@ main.content {
     font-weight: 700;
 }
 
+@media (min-width: 901px) {
+    .nav.collapsed {
+        display: flex;
+    }
+}
+
 .auth-block {
     margin-top: auto;
     display: flex;
@@ -436,6 +442,29 @@ textarea,
     }
 
     .content {
-        padding: 24px 20px;
+        padding: 16px;
     }
+
+    .page {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .card-elevated,
+    .glass-panel {
+        border-radius: 12px;
+    }
+
+    .list-group-item {
+        padding: 12px;
+    }
+
+    input,
+    select,
+    textarea,
+    .form-control,
+    .form-select {
+        font-size: 16px;
+    }
+}
 }
