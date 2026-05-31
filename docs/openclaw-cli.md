@@ -1,6 +1,6 @@
 # OpenClaw CLI
 
-Command-line interface for managing the Good Deeds Tracker API. Operates as a parent — authenticating via Bearer token or Azure SWA auth — and managing all children, deeds, deed types, redeem types, redemptions, and balances under that single parent.
+Command-line interface for managing the Good Deeds Tracker API. Operates as a parent — authenticating via `x-deeds-token` header or Azure SWA auth — and managing all children, deeds, deed types, redeem types, redemptions, and balances under that single parent.
 
 ## Installation
 
@@ -17,7 +17,7 @@ The CLI stores config in `~/.briarforge/config.json`. You can also set environme
 | Env variable | Description |
 |-------------|-------------|
 | `OPENCLAW_BASE_URL` | API base URL (default: `http://localhost:7071/api`) |
-| `OPENCLAW_TOKEN` | Bearer token for authentication |
+| `OPENCLAW_TOKEN` | CLI token (`gd_pat_***`) for authentication |
 | `OPENCLAW_PARENT_ID` | Parent ID (used when token not present) |
 
 ## Setup
@@ -32,10 +32,8 @@ The CLI stores the token and base URL locally. Future commands pick up credentia
 
 The CLI supports two auth mechanisms (tried in order):
 
-1. **Bearer token** — `Authorization: Bearer gd_pat_xxx`. Tokens are created via `openclaw tokens create`.
+1. **CLI token** — `x-deeds-token: gd_pat_***` header. Tokens are created via `openclaw tokens create`.
 2. **Azure SWA auth** — via `x-ms-client-principal` header (local dev / deployed SWA auth).
-
-All API routes accept Bearer token as the primary auth path; the SWA path is a fallback.
 
 ---
 
@@ -279,26 +277,26 @@ openclaw parent me
 ## Curl Examples
 
 ```bash
-BASE="http://localhost:7071/api"
+BASE="https://deeds.delpach.com/api"
 TOKEN="gd_pat_xxx"
 
 # Create a deed type
 curl -X POST "$BASE/deed-types" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "x-deeds-token: $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Washing dishes","points":3}'
+  -d '{"name":"Washing dishes","points":3,"parentId":"<parent-id>"}'
 
 # Log a deed
 curl -X POST "$BASE/deeds" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "x-deeds-token: $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"childId":"<child-id>","deedTypeId":"<deed-type-id>","note":"Evening chores"}'
+  -d '{"childId":"<child-id>","deedTypeId":"<deed-type-id>","note":"Evening chores","parentId":"<parent-id>"}'
 
 # Redeem points
 curl -X POST "$BASE/redemptions" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "x-deeds-token: $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"childId":"<child-id>","points":5,"description":"Treat"}'
+  -d '{"childId":"<child-id>","points":5,"description":"Treat","parentId":"<parent-id>"}'
 ```
 
 ---

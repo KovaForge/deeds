@@ -11,7 +11,8 @@ public static class ParentGuard
     private const string HeaderName = "x-parent-id";
     private const string ClientPrincipalHeader = "x-ms-client-principal";
     private const string AuthenticatedRole = "authenticated";
-    private const string BearerPrefix = "Bearer ";
+    private const string DeedTokenHeader = "x-deeds-token";
+    private const string TokenPrefix = "gd_pat_";
 
     public static bool TryGetParent(HttpRequestData req, string connectionString, out Guid parentId, out HttpResponseData? errorResponse)
         => TryGetParent(req, connectionString, null, out parentId, out errorResponse);
@@ -292,26 +293,17 @@ public static class ParentGuard
         parentId = Guid.Empty;
         errorResponse = null;
 
-        if (!req.Headers.TryGetValues("Authorization", out var authHeaders))
+        if (!req.Headers.TryGetValues(DeedTokenHeader, out var tokenHeaders))
         {
             return false;
         }
 
-        var authHeader = authHeaders.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
+        var rawToken = tokenHeaders.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(rawToken) || !rawToken.StartsWith(TokenPrefix, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        var rawToken = authHeader.Substring(BearerPrefix.Length).Trim();
-        if (string.IsNullOrWhiteSpace(rawToken) || !rawToken.StartsWith("gd_pat_", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        // Convert raw token back to the internal hash format used forStorage
-        // The raw token stored in the DB is the full gd_pat_xxx string
-        // We hash it the same way the CLI does
         var tokenHash = CliTokenFunctions.HashToken(rawToken);
         var resolvedParentId = Data.ResolveCliToken(connectionString, tokenHash).GetAwaiter().GetResult();
         if (resolvedParentId.HasValue)
