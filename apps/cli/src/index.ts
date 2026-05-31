@@ -307,7 +307,33 @@ async function balanceGet(flags: Map<string, string | boolean>, session: Session
 
 async function history(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
-  printJson(await apiRequest(session, `children/${childId}/history?parentId=${session.parentId}`));
+  const res = await apiRequestRaw(session, `children/${childId}/export/csv`);
+  // Parse CSV: entry_type,points,dollar_value,note,occurred_at,recorded_by
+  const lines = res.split("\n").filter((l) => l.trim());
+  if (lines.length < 2) {
+    printJson([]);
+    return;
+  }
+  const headers = lines[0].split(",");
+  const rows = lines.slice(1).map((line) => {
+    const values = line.split(",");
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h.trim()] = values[i]?.trim() || ""; });
+    return row;
+  });
+  printJson(rows);
+}
+
+async function apiRequestRaw(session: Session, pathname: string, init: RequestInit = {}): Promise<string> {
+  const headers = new Headers(init.headers);
+  headers.set("x-deeds-token", session.token);
+  const normalizedPath = pathname.startsWith("/") ? pathname.slice(1) : pathname;
+  const url = new URL(`${session.baseUrl}/${normalizedPath}`);
+  const response = await fetch(url, { ...init, headers });
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+  return response.text();
 }
 
 // ─── Parent ─────────────────────────────────────────────────────────────────
