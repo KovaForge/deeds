@@ -128,10 +128,34 @@ public static class ParentGuard
     public static bool TryEnsureParent(HttpRequestData req, string connectionString, Guid expectedParent, out HttpResponseData? errorResponse)
     {
         errorResponse = null;
+        Guid parentId;
+
+        // Check for CLI token auth (x-deeds-token) first — this takes priority over browser cookie
+        if (req.Headers.TryGetValues(DeedTokenHeader, out var tokenHeaders))
+        {
+            var rawToken = tokenHeaders.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(rawToken) && rawToken.StartsWith(TokenPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var tokenHash = CliTokenFunctions.HashToken(rawToken);
+                var resolvedParentId = Data.ResolveCliToken(connectionString, tokenHash).GetAwaiter().GetResult();
+                if (resolvedParentId.HasValue)
+                {
+                    if (resolvedParentId.Value != expectedParent)
+                    {
+                        errorResponse = CreateError(req, HttpStatusCode.Forbidden, "ParentId does not match authenticated token");
+                        return false;
+                    }
+                    parentId = resolvedParentId.Value;
+                    return true;
+                }
+            }
+        }
+
+        // Browser cookie auth (SWA auth middleware)
         var principal = GetPrincipal(req);
         if (principal.IsAuthenticated)
         {
-            if (!TryGetParent(req, connectionString, expectedParent, out var parentId, out errorResponse))
+            if (!TryGetParent(req, connectionString, expectedParent, out parentId, out errorResponse))
             {
                 return false;
             }
