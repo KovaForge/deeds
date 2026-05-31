@@ -11,6 +11,8 @@ public record AiKeyRecord(string CipherText, string Nonce, string Tag);
 public record ParentAuthLink(Guid ParentId, string Provider, string UserId, string? Email, string? DisplayName);
 public record ParentInvite(Guid Id, Guid ParentId, string Email, string Token, DateTime ExpiresAtUtc, DateTime CreatedAtUtc, string? CreatedBy, DateTime? AcceptedAtUtc, DateTime? CancelledAtUtc);
 public record ParentInviteSummary(Guid Id, Guid ParentId, string Email, DateTime ExpiresAtUtc, DateTime CreatedAtUtc, string? CreatedBy);
+public record CliTokenInfo(Guid Id, Guid ParentId, string Label, DateTime CreatedAt, DateTime? LastUsedAt, DateTime? ExpiresAt);
+public record CliTokenCreated(Guid Id, Guid ParentId, string Label, DateTime CreatedAt);
 
 public static class Data
 {
@@ -107,7 +109,20 @@ create table if not exists parent_invites(
   cancelled_at timestamptz
 );
 create index if not exists idx_parent_invites_parent on parent_invites(parent_id);
-create index if not exists idx_parent_invites_token on parent_invites(token);";
+create index if not exists idx_parent_invites_token on parent_invites(token);
+
+create table if not exists parent_cli_tokens(
+  id uuid primary key,
+  parent_id uuid not null references parents(id) on delete cascade,
+  label text not null,
+  token_hash text not null unique,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz,
+  expires_at timestamptz,
+  revoked_at timestamptz
+);
+create index if not exists idx_parent_cli_tokens_parent on parent_cli_tokens(parent_id);
+create index if not exists idx_parent_cli_tokens_hash on parent_cli_tokens(token_hash);";
     await using var db = Conn(cs);
     await db.ExecuteAsync(sql);
     await db.ExecuteAsync("alter table if exists redemptions add column if not exists redeem_type_id uuid references redeem_types(id);");
@@ -681,6 +696,66 @@ returning parent_id as ParentId, email as Email;";
 
     await using var db = Conn(cs);
     return await db.QuerySingleOrDefaultAsync<(Guid ParentId, string Email)?>(sql, new { Token = token, AcceptedBy = acceptedBy });
+  }
+
+  public static async Task<CliTokenCreated> CreateCliToken(string cs, Guid parentId, string label, string tokenHash, DateTime? expiresAt)
+  {
+    const string sql = @"
+insert into parent_cli_tokens(id, parent_id, label, token_hash, expires_at)
+values(@Id, @ParentId, @Label, @TokenHash, @ExpiresAt)
+returning id as Id, parent_id as ParentId, label as Label, created_at as CreatedAt;";
+
+    await using var db = Conn(cs);
+    var id = Guid.NewGuid();
+    return await db.QuerySingleAsync<CliTokenCreated>(sql, new
+    {
+      Id = id,
+      ParentId = parentId,
+      Label = label,
+      TokenHash = tokenHash,
+      ExpiresAt = expiresAt
+    });
+  }
+
+  public static async Task<IEnumerable<CliTokenInfo>> ListCliTokens(string cs, Guid parentId)
+  {
+    const string sql = @"
+select id as Id, parent_id as ParentId, label as Label,
+       created_at as CreatedAt, last_used_at as LastUsedAt, expires_at as ExpiresAt
+from parent_cli_tokens
+where parent_id = @ParentId and revoked_at is null
+order by created_at desc;";
+
+    await using var db = Conn(cs);
+    return await db.QueryAsync<CliTokenInfo>(sql, new { ParentId = parentId });
+  }
+
+  public static async Task<bool> RevokeCliToken(string cs, Guid parentId, Guid tokenId)
+  {
+    const string sql = @"
+update parent_cli_tokens
+set revoked_at = now()
+where id = @TokenId and parent_id = @ParentId and revoked_at is null;";
+
+    await using var db = Conn(cs);
+    var affected = await db.ExecuteAsync(sql, new { TokenId = tokenId, ParentId = parentId });
+    return affected > 0;
+  }
+
+  public static async Task<Guid?> ResolveCliToken(string cs, string tokenHash)
+  {
+    const string sql = @"
+update parent_cli_tokens t
+set last_used_at = now()
+from parents p
+where t.token_hash = @TokenHash
+  and t.parent_id = p.id
+  and t.revoked_at is null
+  and (t.expires_at is null or t.expires_at > now())
+returning t.parent_id;";
+
+    await using var db = Conn(cs);
+    return await db.QuerySingleOrDefaultAsync<Guid?>(sql, new { TokenHash = tokenHash });
   }
 
   public static string ToCsv(IEnumerable<ChildHistoryRow> rows)
