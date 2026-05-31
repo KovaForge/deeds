@@ -22,13 +22,15 @@ Good Deeds Tracker lets parents record good and bad deeds, award or deduct point
 - Redemption tracking with automatic balance recalculation
 - CSV export of each child history for audits or reports
 - Responsive UI themed for family use
+- CLI for agent-driven automation with Bearer token auth
 
 ## Repository Layout
 
 ```
 good-deeds/
 ├── api/           # Azure Functions (.NET isolated)
-└── app/           # Blazor WebAssembly client
+├── app/           # Blazor WebAssembly client
+└── apps/cli/      # TypeScript CLI (openclaw)
 ```
 
 ### API Project (`api/`)
@@ -117,6 +119,33 @@ Each user can save their own OpenAI API key in **Settings**. Keys are encrypted 
 ## Linking Accounts
 
 If you sign in with Microsoft using an email address that differs from the parent email you previously stored in the app, open **Settings** and use **Link existing account** to map your Microsoft identity to the existing parent email.
+
+## CLI / OpenClaw
+
+The `apps/cli/` TypeScript CLI provides agent-driven automation. It authenticates via Bearer token (`gd_pat_xxx`) and can manage all entities (children, deed types, deeds, redemptions, balances).
+
+```bash
+# Build
+cd apps/cli && npm install && npm run build
+
+# Authenticate
+node dist/index.js auth login --token <gd_pat_xxx> --base-url https://yourapp.azurewebsites.net/api
+
+# Token management
+node dist/index.js tokens create --label "CI runner" --days-valid 90
+node dist/index.js tokens list
+node dist/index.js tokens revoke --id <token-id>
+
+# Children
+node dist/index.js children list
+node dist/index.js children create --name "Sam" --dollar-per-point 1.50
+
+# Deeds
+node dist/index.js deed-types create --name "Washing dishes" --points 3
+node dist/index.js deeds create --child-id <id> --deed-type-id <id> --note "Evening chores"
+```
+
+For the full command reference, see [docs/openclaw-cli.md](docs/openclaw-cli.md).
 
 ## REST API Summary
 
