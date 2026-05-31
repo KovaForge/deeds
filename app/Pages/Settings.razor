@@ -4,6 +4,7 @@
 @inject AuthService Auth
 @inject NavigationManager Navigation
 @inject UserSettingsService UserSettings
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Settings</PageTitle>
 
@@ -120,6 +121,97 @@
     </div>
 </div>
 
+@if (_authUser is not null)
+{
+    <div class="row g-4 mt-2">
+        <div class="col-12">
+            <div class="card card-elevated">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="card-title mb-0">CLI tokens</h5>
+                        <button class="btn btn-primary btn-sm" type="button" @onclick="ShowCreateTokenDialog" disabled="@_creatingToken">New token</button>
+                    </div>
+                    <p class="text-muted small">Personal access tokens for the OpenClaw CLI. The raw token is shown once at creation — store it securely.</p>
+
+                    @if (_tokensFeedback is not null)
+                    {
+                        <div class="alert alert-info mt-2">@_tokensFeedback</div>
+                    }
+
+                    @if (_newToken is not null)
+                    {
+                        <div class="alert alert-warning mt-2">
+                            <div class="fw-semibold">Token created — copy it now</div>
+                            <div class="text-muted small mb-2">This token will not be shown again.</div>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input class="form-control font-monospace small" readonly value="@_newToken" style="max-width: 400px;" />
+                                <button class="btn btn-outline-secondary btn-sm" type="button" @onclick="CopyNewToken">Copy</button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (_tokens.Count == 0)
+                    {
+                        <div class="text-muted small">No tokens created yet.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm mb-0 mt-3">
+                            <thead>
+                                <tr>
+                                    <th>Label</th>
+                                    <th>Created</th>
+                                    <th>Last used</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var token in _tokens)
+                                {
+                                    <tr>
+                                        <td class="align-middle">@token.Label</td>
+                                        <td class="align-middle text-muted small">@token.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+                                        <td class="align-middle text-muted small">@(token.LastUsedAtUtc?.ToLocalTime().ToString("g") ?? "—")</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-outline-danger btn-sm" type="button" @onclick="() => RevokeToken(token.Id)" disabled="@_revokingTokenId == token.Id">Revoke</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showCreateDialog)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New CLI token</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="() => _showCreateDialog = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Label</label>
+                        <input class="form-control" placeholder="e.g. laptop, workstation" @bind="_newTokenLabel" />
+                        <div class="form-text">A descriptive name to identify this token.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => _showCreateDialog = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateTokenAsync" disabled="@_creatingToken">@(_creatingToken ? "Creating." : "Create token")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @if (ShowLinkPrompt)
 {
     <div class="card card-elevated mt-4">
@@ -162,6 +254,11 @@
     private string? _aiKeyFeedback;
     private bool _linkingParent;
     private string? _linkFeedback;
+    private readonly List<CliTokenDto> _tokens = [];
+    private string? _newToken;
+    private bool _creatingToken;
+    private Guid? _revokingTokenId;
+    private string? _tokensFeedback;
 
     protected override async Task OnInitializedAsync()
     {
@@ -200,6 +297,7 @@
             }
 
             await LoadAiKeyStatusAsync();
+            await LoadTokensAsync();
         }
     }
 
@@ -397,6 +495,92 @@
             _savingAiKey = false;
         }
     }
+
+    private async Task LoadTokensAsync()
+    {
+        try
+        {
+            var tokens = await ApiClient.GetCliTokensAsync();
+            _tokens.Clear();
+            _tokens.AddRange(tokens);
+        }
+        catch (Exception ex)
+        {
+            _tokensFeedback = ex.Message;
+        }
+    }
+
+    private void ShowCreateTokenDialog()
+    {
+        if (_authUser is null)
+        {
+            _tokensFeedback = "Sign in to create a token.";
+            return;
+        }
+        _newTokenLabel = string.Empty;
+        _newToken = null;
+        _showCreateDialog = true;
+    }
+
+    private async Task CreateTokenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newTokenLabel))
+        {
+            _tokensFeedback = "Label is required.";
+            return;
+        }
+
+        _creatingToken = true;
+        _tokensFeedback = null;
+
+        try
+        {
+            var result = await ApiClient.CreateCliTokenAsync(_newTokenLabel.Trim());
+            _newToken = result.Token;
+            _showCreateDialog = false;
+            await LoadTokensAsync();
+            _tokensFeedback = "Token created. Copy it now — it will not be shown again.";
+        }
+        catch (Exception ex)
+        {
+            _tokensFeedback = ex.Message;
+        }
+        finally
+        {
+            _creatingToken = false;
+        }
+    }
+
+    private async Task RevokeToken(Guid tokenId)
+    {
+        _revokingTokenId = tokenId;
+        _tokensFeedback = null;
+
+        try
+        {
+            await ApiClient.DeleteCliTokenAsync(tokenId);
+            _tokens.RemoveAll(t => t.Id == tokenId);
+            _tokensFeedback = "Token revoked.";
+        }
+        catch (Exception ex)
+        {
+            _tokensFeedback = ex.Message;
+        }
+        finally
+        {
+            _revokingTokenId = null;
+        }
+    }
+
+    private async Task CopyNewToken()
+    {
+        if (_newToken is null) return;
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _newToken);
+        _tokensFeedback = "Copied to clipboard.";
+    }
+
+    private string _newTokenLabel = string.Empty;
+    private bool _showCreateDialog;
 
     private sealed class ParentForm
     {

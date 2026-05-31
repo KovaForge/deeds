@@ -536,6 +536,51 @@ public class ApiClient
         throw new InvalidOperationException(message);
     }
 
+    public async Task<IReadOnlyList<CliTokenDto>> GetCliTokensAsync()
+    {
+        var response = await _http.GetAsync("cli-tokens");
+        if (response.IsSuccessStatusCode)
+        {
+            var items = await response.Content.ReadFromJsonAsync<List<CliTokenDto>>();
+            return items ?? new List<CliTokenDto>();
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new List<CliTokenDto>();
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to load CLI tokens (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task<CreateCliTokenResponse> CreateCliTokenAsync(string label)
+    {
+        var response = await _http.PostAsJsonAsync("cli-tokens", new CreateCliTokenRequest(label));
+        if (response.IsSuccessStatusCode)
+        {
+            return (await response.Content.ReadFromJsonAsync<CreateCliTokenResponse>())!;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to create CLI token (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
+    public async Task DeleteCliTokenAsync(Guid tokenId)
+    {
+        var response = await _http.DeleteAsync($"cli-tokens/{tokenId}");
+        if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            return;
+        }
+
+        var error = await ReadErrorAsync(response);
+        var message = error ?? $"Unable to revoke CLI token (Status: {(int)response.StatusCode} {response.StatusCode})";
+        throw new InvalidOperationException(message);
+    }
+
     private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
     {
         try

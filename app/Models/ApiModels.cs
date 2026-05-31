@@ -34,3 +34,8 @@ public record AcceptInviteRequest(string Token);
 public record AcceptInviteResponse(Guid ParentId, string Email);
 public record UpdateProfileRequest(string DisplayName);
 public record ProfileDto(string? Email, string? DisplayName);
+
+// CLI Token models
+public record CliTokenDto(Guid Id, string Label, DateTime CreatedAtUtc, DateTimeOffset? LastUsedAtUtc);
+public record CreateCliTokenRequest(string Label);
+public record CreateCliTokenResponse(string Token);
