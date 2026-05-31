@@ -11,6 +11,7 @@ public static class ParentGuard
     private const string HeaderName = "x-parent-id";
     private const string ClientPrincipalHeader = "x-ms-client-principal";
     private const string AuthenticatedRole = "authenticated";
+    private const string BearerPrefix = "Bearer ";
 
     public static bool TryGetParent(HttpRequestData req, string connectionString, out Guid parentId, out HttpResponseData? errorResponse)
         => TryGetParent(req, connectionString, null, out parentId, out errorResponse);
@@ -19,6 +20,19 @@ public static class ParentGuard
     {
         parentId = Guid.Empty;
         errorResponse = null;
+
+        // --- Bearer token fallback ---
+        if (TryGetParentFromBearer(req, connectionString, out var bearerParentId, out var bearerError))
+        {
+            parentId = bearerParentId;
+            return true;
+        }
+        if (bearerError is not null)
+        {
+            errorResponse = bearerError;
+            return false;
+        }
+        // --- End Bearer token ---
 
         var principal = GetPrincipal(req);
         if (principal.IsAuthenticated)
@@ -272,6 +286,42 @@ public static class ParentGuard
 
     private static bool IsEmail(string? value)
         => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+
+    private static bool TryGetParentFromBearer(HttpRequestData req, string connectionString, out Guid parentId, out HttpResponseData? errorResponse)
+    {
+        parentId = Guid.Empty;
+        errorResponse = null;
+
+        if (!req.Headers.TryGetValues("Authorization", out var authHeaders))
+        {
+            return false;
+        }
+
+        var authHeader = authHeaders.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var rawToken = authHeader.Substring(BearerPrefix.Length).Trim();
+        if (string.IsNullOrWhiteSpace(rawToken) || !rawToken.StartsWith("gd_pat_", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Convert raw token back to the internal hash format used forStorage
+        // The raw token stored in the DB is the full gd_pat_xxx string
+        // We hash it the same way the CLI does
+        var tokenHash = CliTokenFunctions.HashToken(rawToken);
+        var resolvedParentId = Data.ResolveCliToken(connectionString, tokenHash).GetAwaiter().GetResult();
+        if (resolvedParentId.HasValue)
+        {
+            parentId = resolvedParentId.Value;
+            return true;
+        }
+
+        return false;
+    }
 
     private readonly record struct AuthPrincipal(bool IsAuthenticated, string? Provider, string? UserId, string? Email)
     {
