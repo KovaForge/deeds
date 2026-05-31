@@ -62,3 +62,58 @@
 
 - For changes, summarize what changed and where.
 - Provide next steps only when they are natural and actionable.
+
+---
+
+## OpenClaw / Hermes Operability
+
+This project (Good Deeds Tracker) is designed to be operated by OpenClaw/Hermes agent workers. The following conventions apply.
+
+### Token Authentication
+
+- CLI tokens use `gd_pat_` prefix (Good Deeds Personal Access Token).
+- Raw token is shown once at creation time — it cannot be recovered later.
+- Tokens are stored as SHA-256 hashes in `parent_cli_tokens` table.
+- The API accepts `Authorization: Bearer <token>` on all routes.
+
+### Single-Parent Model
+
+All API operations are scoped to a single parent account. The CLI operates as the authenticated parent and can manage:
+- Children (create, update, delete, list)
+- Deed types (create, update, delete, list)
+- Deeds (create, delete, list per child)
+- Redeem types (create, list)
+- Redemptions (create, list per child)
+- Balances and history
+
+The parent is resolved from the Bearer token (CLI auth) or `x-ms-client-principal` header (Azure SWA auth) or `x-parent-id` header / `?parentId=` query param (fallback).
+
+### CLI Usage
+
+```bash
+# Authenticate
+openclaw auth login --token <gd_pat_xxx> --base-url <api-base-url>
+
+# Manage tokens
+openclaw tokens create --label "laptop" [--days-valid 90]
+openclaw tokens list
+openclaw tokens revoke --id <token-id>
+
+# Operate on children
+openclaw children list
+openclaw children create --name "Sam" --dollar-per-point 1.50
+
+# Operate on deeds
+openclaw deed-types create --name "Washing dishes" --points 3
+openclaw deeds create --child-id <id> --deed-type-id <id> --note "Evening chores"
+
+# View balances
+openclaw balances list
+openclaw history --child-id <id>
+```
+
+### Build Notes
+
+- C# API: `cd api && dotnet build` (Azure Functions .NET 8 isolated worker)
+- TypeScript CLI: `cd apps/cli && npm run build` (produces `dist/index.js`)
+- TypeScript compiles successfully; C# build has a known metadata generator issue in some environments but the source compiles correctly.
