@@ -58,7 +58,7 @@ async function request<T>(config: CliConfig, pathname: string, init: RequestInit
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   if (config.token) {
-    headers.set("Authorization", `Bearer ${config.token}`);
+    headers.set("x-deeds-token", config.token);
   }
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
