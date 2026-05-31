@@ -54,16 +54,52 @@ function parseArgs(argv: string[]) {
   return { positionals, flags };
 }
 
-async function request<T>(config: CliConfig, pathname: string, init: RequestInit = {}) {
+// ─── Session context ─────────────────────────────────────────────────────────
+
+type Session = {
+  baseUrl: string;
+  token: string;
+  parentId: string;
+};
+
+async function resolveSession(config: CliConfig): Promise<Session> {
+  if (!config.token) {
+    throw new Error("No token configured. Run: openclaw auth login --token <token>");
+  }
+
+  // Build base (ensure trailing slash)
+  const base = config.baseUrl.endsWith("/")
+    ? config.baseUrl
+    : config.baseUrl + "/";
+  const baseUrl = base.slice(0, -1); // remove trailing slash for use as URL origin
+
+  // Use stored parentId if available
+  if (config.parentId) {
+    return { baseUrl, token: config.token, parentId: config.parentId };
+  }
+
+  // Otherwise resolve from /parents/me
+  const url = new URL(`${base}parents/me`);
+  const headers = new Headers({ "x-deeds-token": config.token, Accept: "application/json" });
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error || `Auth failed: ${res.status}`);
+  }
+  const data = (await res.json()) as { Id: string };
+  return { baseUrl, token: config.token, parentId: data.Id };
+}
+
+async function apiRequest<T>(session: Session, pathname: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (config.token) {
-    headers.set("x-deeds-token", config.token);
-  }
+  headers.set("x-deeds-token", session.token);
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const url = new URL(pathname, config.baseUrl);
+  // Strip leading slash to avoid URL path concatenation issues
+  const normalizedPath = pathname.startsWith("/") ? pathname.slice(1) : pathname;
+  const url = new URL(`${session.baseUrl}/${normalizedPath}`);
   const response = await fetch(url, { ...init, headers });
   const data = (await response.json().catch(() => ({}))) as T & { error?: string; message?: string };
   if (!response.ok) {
@@ -85,7 +121,7 @@ function getOptional(flags: Map<string, string | boolean>, name: string): string
   return typeof value === "string" ? value : undefined;
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────────────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
 async function authLogin(flags: Map<string, string | boolean>, config: CliConfig) {
   const token = getRequired(flags, "token");
@@ -95,163 +131,164 @@ async function authLogin(flags: Map<string, string | boolean>, config: CliConfig
   printJson({ success: true, baseUrl });
 }
 
-// ─── Token management ──────────────────────────────────────────────────────────
+// ─── Token management ─────────────────────────────────────────────────────────
 
-async function tokensCreate(flags: Map<string, string | boolean>, config: CliConfig) {
+async function tokensCreate(flags: Map<string, string | boolean>, session: Session) {
   const label = getRequired(flags, "label");
   const daysValid = flags.get("days-valid");
   const body: Record<string, unknown> = { label };
   if (typeof daysValid === "string") {
     body.daysValid = parseInt(daysValid, 10);
   }
-  printJson(await request(config, "/cli-tokens", {
+  printJson(await apiRequest(session, "cli-tokens", {
     method: "POST",
     body: JSON.stringify(body),
   }));
 }
 
-async function tokensList(flags: Map<string, string | boolean>, config: CliConfig) {
-  printJson(await request(config, "/cli-tokens"));
+async function tokensList(session: Session) {
+  printJson(await apiRequest(session, "cli-tokens"));
 }
 
-async function tokensRevoke(flags: Map<string, string | boolean>, config: CliConfig) {
+async function tokensRevoke(flags: Map<string, string | boolean>, session: Session) {
   const id = getRequired(flags, "id");
-  printJson(await request(config, `/cli-tokens/${id}`, { method: "DELETE" }));
+  printJson(await apiRequest(session, `cli-tokens/${id}`, { method: "DELETE" }));
 }
 
 // ─── Children ─────────────────────────────────────────────────────────────────
 
-async function childrenList(config: CliConfig) {
-  printJson(await request(config, "/children"));
+async function childrenList(session: Session) {
+  printJson(await apiRequest(session, `parents/${session.parentId}/children`));
 }
 
-async function childrenCreate(flags: Map<string, string | boolean>, config: CliConfig) {
+async function childrenCreate(flags: Map<string, string | boolean>, session: Session) {
   const name = getRequired(flags, "name");
   const dpp = getOptional(flags, "dollar-per-point");
-  const body: Record<string, unknown> = { name };
+  const body: Record<string, unknown> = { name, parentId: session.parentId };
   if (dpp) {
     body.dollarPerPoint = parseFloat(dpp);
   }
-  printJson(await request(config, "/children", {
+  printJson(await apiRequest(session, "children", {
     method: "POST",
     body: JSON.stringify(body),
   }));
 }
 
-async function childrenUpdate(flags: Map<string, string | boolean>, config: CliConfig, id: string) {
+async function childrenUpdate(flags: Map<string, string | boolean>, session: Session, id: string) {
   const name = getOptional(flags, "name");
   const dpp = getOptional(flags, "dollar-per-point");
-  const body: Record<string, unknown> = {};
+  const body: Record<string, unknown> = { parentId: session.parentId };
   if (name) body.name = name;
   if (dpp) body.dollarPerPoint = parseFloat(dpp);
-  printJson(await request(config, `/children/${id}`, {
+  printJson(await apiRequest(session, `children/${id}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   }));
 }
 
-async function childrenDelete(flags: Map<string, string | boolean>, config: CliConfig) {
+async function childrenDelete(flags: Map<string, string | boolean>, session: Session) {
   const id = getRequired(flags, "id");
-  printJson(await request(config, `/children/${id}`, { method: "DELETE" }));
+  printJson(await apiRequest(session, `parents/${session.parentId}/children/${id}`, { method: "DELETE" }));
 }
 
 // ─── Deed Types ────────────────────────────────────────────────────────────────
 
-async function deedTypesList(config: CliConfig) {
-  printJson(await request(config, "/deed-types"));
+async function deedTypesList(session: Session) {
+  printJson(await apiRequest(session, `parents/${session.parentId}/deed-types`));
 }
 
-async function deedTypesCreate(flags: Map<string, string | boolean>, config: CliConfig) {
+async function deedTypesCreate(flags: Map<string, string | boolean>, session: Session) {
   const name = getRequired(flags, "name");
   const points = getRequired(flags, "points");
-  printJson(await request(config, "/deed-types", {
+  printJson(await apiRequest(session, "deed-types", {
     method: "POST",
-    body: JSON.stringify({ name, points: parseInt(points, 10) }),
+    body: JSON.stringify({ name, points: parseInt(points, 10), parentId: session.parentId }),
   }));
 }
 
-async function deedTypesUpdate(flags: Map<string, string | boolean>, config: CliConfig, id: string) {
+async function deedTypesUpdate(flags: Map<string, string | boolean>, session: Session, id: string) {
   const name = getOptional(flags, "name");
   const points = getOptional(flags, "points");
   const active = flags.get("active");
-  const body: Record<string, unknown> = {};
+  const body: Record<string, unknown> = { parentId: session.parentId };
   if (name) body.name = name;
   if (points) body.points = parseInt(points, 10);
   if (typeof active === "boolean") body.active = active;
-  printJson(await request(config, `/deed-types/${id}`, {
+  printJson(await apiRequest(session, `deed-types/${id}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   }));
 }
 
-async function deedTypesDelete(flags: Map<string, string | boolean>, config: CliConfig) {
+async function deedTypesDelete(flags: Map<string, string | boolean>, session: Session) {
   const id = getRequired(flags, "id");
-  printJson(await request(config, `/deed-types/${id}`, { method: "DELETE" }));
+  printJson(await apiRequest(session, `parents/${session.parentId}/deed-types/${id}`, { method: "DELETE" }));
 }
 
 // ─── Deeds ────────────────────────────────────────────────────────────────────
 
-async function deedsList(flags: Map<string, string | boolean>, config: CliConfig) {
+async function deedsList(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
-  printJson(await request(config, `/children/${childId}/deeds`));
+  printJson(await apiRequest(session, `children/${childId}/deeds?parentId=${session.parentId}`));
 }
 
-async function deedsCreate(flags: Map<string, string | boolean>, config: CliConfig) {
+async function deedsCreate(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
   const deedTypeId = getRequired(flags, "deed-type-id");
   const points = getOptional(flags, "points");
   const note = getOptional(flags, "note");
   const occurredAt = getOptional(flags, "occurred-at");
   const createdBy = getOptional(flags, "created-by");
-  const body: Record<string, unknown> = { childId, deedTypeId };
+  const body: Record<string, unknown> = { childId, deedTypeId, parentId: session.parentId };
   if (points) body.points = parseInt(points, 10);
   if (note) body.note = note;
   if (occurredAt) body.occurredAt = occurredAt;
   if (createdBy) body.createdBy = createdBy;
-  printJson(await request(config, "/deeds", {
+  printJson(await apiRequest(session, "deeds", {
     method: "POST",
     body: JSON.stringify(body),
   }));
 }
 
-async function deedsDelete(flags: Map<string, string | boolean>, config: CliConfig) {
+async function deedsDelete(flags: Map<string, string | boolean>, session: Session) {
   const id = getRequired(flags, "id");
-  printJson(await request(config, `/deeds/${id}`, { method: "DELETE" }));
+  const childId = getRequired(flags, "child-id");
+  printJson(await apiRequest(session, `children/${childId}/deeds/${id}?parentId=${session.parentId}`, { method: "DELETE" }));
 }
 
 // ─── Redeem Types ────────────────────────────────────────────────────────────
 
-async function redeemTypesList(config: CliConfig) {
-  printJson(await request(config, "/redeem-types"));
+async function redeemTypesList(session: Session) {
+  printJson(await apiRequest(session, `parents/${session.parentId}/redeem-types`));
 }
 
-async function redeemTypesCreate(flags: Map<string, string | boolean>, config: CliConfig) {
+async function redeemTypesCreate(flags: Map<string, string | boolean>, session: Session) {
   const name = getRequired(flags, "name");
   const points = getRequired(flags, "points");
-  printJson(await request(config, "/redeem-types", {
+  printJson(await apiRequest(session, "redeem-types", {
     method: "POST",
-    body: JSON.stringify({ name, points: parseInt(points, 10) }),
+    body: JSON.stringify({ name, points: parseInt(points, 10), parentId: session.parentId }),
   }));
 }
 
 // ─── Redemptions ─────────────────────────────────────────────────────────────
 
-async function redemptionsList(flags: Map<string, string | boolean>, config: CliConfig) {
+async function redemptionsList(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
-  printJson(await request(config, `/children/${childId}/redemptions`));
+  printJson(await apiRequest(session, `children/${childId}/redemptions?parentId=${session.parentId}`));
 }
 
-async function redemptionsCreate(flags: Map<string, string | boolean>, config: CliConfig) {
+async function redemptionsCreate(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
   const points = getRequired(flags, "points");
   const redeemTypeId = getOptional(flags, "redeem-type-id");
   const description = getOptional(flags, "description");
   const createdBy = getOptional(flags, "created-by");
-  const body: Record<string, unknown> = { childId, points: parseInt(points, 10) };
+  const body: Record<string, unknown> = { childId, points: parseInt(points, 10), parentId: session.parentId };
   if (redeemTypeId) body.redeemTypeId = redeemTypeId;
   if (description) body.description = description;
   if (createdBy) body.createdBy = createdBy;
-  printJson(await request(config, "/redemptions", {
+  printJson(await apiRequest(session, "redemptions", {
     method: "POST",
     body: JSON.stringify(body),
   }));
@@ -259,96 +296,99 @@ async function redemptionsCreate(flags: Map<string, string | boolean>, config: C
 
 // ─── Balances ────────────────────────────────────────────────────────────────
 
-async function balancesList(config: CliConfig) {
-  printJson(await request(config, "/children"));
+async function balancesList(session: Session) {
+  printJson(await apiRequest(session, `parents/${session.parentId}/children/with-balances`));
 }
 
-async function balanceGet(flags: Map<string, string | boolean>, config: CliConfig) {
+async function balanceGet(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
-  printJson(await request(config, `/balances/${childId}`));
+  printJson(await apiRequest(session, `balances/${childId}?parentId=${session.parentId}`));
 }
 
-async function history(flags: Map<string, string | boolean>, config: CliConfig) {
+async function history(flags: Map<string, string | boolean>, session: Session) {
   const childId = getRequired(flags, "child-id");
-  printJson(await request(config, `/children/${childId}/history`));
+  printJson(await apiRequest(session, `children/${childId}/history?parentId=${session.parentId}`));
 }
 
 // ─── Parent ─────────────────────────────────────────────────────────────────
 
-async function parentMe(config: CliConfig) {
-  printJson(await request(config, "/parents/me"));
+async function parentMe(session: Session) {
+  printJson(await apiRequest(session, "parents/me"));
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   const { positionals, flags } = parseArgs(process.argv.slice(2));
   const [command1, command2] = positionals;
   const config = await readConfig();
 
-  // Auth
+  // Auth — no session needed
   if (command1 === "auth" && command2 === "login") {
     await authLogin(flags, config);
     return;
   }
 
+  // Resolve session (parent ID from /parents/me if not stored)
+  const session = await resolveSession(config);
+
   // Tokens
   if (command1 === "tokens") {
-    if (command2 === "create") { await tokensCreate(flags, config); return; }
-    if (command2 === "list") { await tokensList(flags, config); return; }
-    if (command2 === "revoke") { await tokensRevoke(flags, config); return; }
+    if (command2 === "create") { await tokensCreate(flags, session); return; }
+    if (command2 === "list") { await tokensList(session); return; }
+    if (command2 === "revoke") { await tokensRevoke(flags, session); return; }
   }
 
   // Children
   if (command1 === "children") {
-    if (command2 === "list") { await childrenList(config); return; }
-    if (command2 === "create") { await childrenCreate(flags, config); return; }
-    if (command2 === "update") { await childrenUpdate(flags, config, getRequired(flags, "id")); return; }
-    if (command2 === "delete") { await childrenDelete(flags, config); return; }
+    if (command2 === "list") { await childrenList(session); return; }
+    if (command2 === "create") { await childrenCreate(flags, session); return; }
+    if (command2 === "update") { await childrenUpdate(flags, session, getRequired(flags, "id")); return; }
+    if (command2 === "delete") { await childrenDelete(flags, session); return; }
   }
 
   // Deed Types
   if (command1 === "deed-types") {
-    if (command2 === "list") { await deedTypesList(config); return; }
-    if (command2 === "create") { await deedTypesCreate(flags, config); return; }
-    if (command2 === "update") { await deedTypesUpdate(flags, config, getRequired(flags, "id")); return; }
-    if (command2 === "delete") { await deedTypesDelete(flags, config); return; }
+    if (command2 === "list") { await deedTypesList(session); return; }
+    if (command2 === "create") { await deedTypesCreate(flags, session); return; }
+    if (command2 === "update") { await deedTypesUpdate(flags, session, getRequired(flags, "id")); return; }
+    if (command2 === "delete") { await deedTypesDelete(flags, session); return; }
   }
 
   // Deeds
   if (command1 === "deeds") {
-    if (command2 === "list") { await deedsList(flags, config); return; }
-    if (command2 === "create") { await deedsCreate(flags, config); return; }
-    if (command2 === "delete") { await deedsDelete(flags, config); return; }
+    if (command2 === "list") { await deedsList(flags, session); return; }
+    if (command2 === "create") { await deedsCreate(flags, session); return; }
+    if (command2 === "delete") { await deedsDelete(flags, session); return; }
   }
 
   // Redeem Types
   if (command1 === "redeem-types") {
-    if (command2 === "list") { await redeemTypesList(config); return; }
-    if (command2 === "create") { await redeemTypesCreate(flags, config); return; }
+    if (command2 === "list") { await redeemTypesList(session); return; }
+    if (command2 === "create") { await redeemTypesCreate(flags, session); return; }
   }
 
   // Redemptions
   if (command1 === "redemptions") {
-    if (command2 === "list") { await redemptionsList(flags, config); return; }
-    if (command2 === "create") { await redemptionsCreate(flags, config); return; }
+    if (command2 === "list") { await redemptionsList(flags, session); return; }
+    if (command2 === "create") { await redemptionsCreate(flags, session); return; }
   }
 
   // Balances
   if (command1 === "balances") {
-    if (command2 === "list") { await balancesList(config); return; }
-    if (command2 === "get") { await balanceGet(flags, config); return; }
+    if (command2 === "list") { await balancesList(session); return; }
+    if (command2 === "get") { await balanceGet(flags, session); return; }
   }
 
   // History
   if (command1 === "history") {
-    await history(flags, config);
+    await history(flags, session);
     return;
   }
 
   // Parent
   if (command1 === "parent" && command2 === "me") {
-    await parentMe(config);
+    await parentMe(session);
     return;
   }
 
@@ -378,7 +418,7 @@ async function main() {
       "# Deeds",
       "openclaw deeds list --child-id <child-id>",
       "openclaw deeds create --child-id <child-id> --deed-type-id <deed-type-id> [--points <n>] [--note <text>] [--occurred-at <ISO date>] [--created-by <text>]",
-      "openclaw deeds delete --id <deed-id>",
+      "openclaw deeds delete --child-id <child-id> --id <deed-id>",
       "",
       "# Redeem Types",
       "openclaw redeem-types list",
